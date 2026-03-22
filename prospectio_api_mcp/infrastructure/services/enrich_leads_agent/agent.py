@@ -97,8 +97,6 @@ class EnrichLeadsAgent(EnrichLeadsPort):
             StateGraph: The compiled agent graph.
         """
         agent = self.build_graph().compile()
-        with open("graph.png", "wb") as f:
-            f.write(agent.get_graph().draw_mermaid_png())
         stream = agent.astream(input={"leads": leads, "profile": profile}, stream_mode="updates")
         async for chunk in stream:
             for value in chunk.values():
