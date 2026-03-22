@@ -4,7 +4,7 @@ RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-ENV PYTHONPATH=/app/prospectio_api_mcp
+ENV PYTHONPATH=/app
 
 FROM base AS builder
 
@@ -25,8 +25,10 @@ WORKDIR /app
 COPY prospectio_api_mcp ./prospectio_api_mcp
 
 RUN addgroup --gid 1001 --system appgroup && \
-    adduser --uid 1001 --system --ingroup appgroup appuser && \
+    adduser --uid 1001 --system --home /home/appuser --ingroup appgroup appuser && \
     chown -R appuser:appgroup /app
+
+ENV HOME=/home/appuser
 
 USER appuser
 
