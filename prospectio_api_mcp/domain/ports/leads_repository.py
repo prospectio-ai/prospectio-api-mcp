@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from domain.entities.leads import Leads
 from domain.entities.company import CompanyEntity, Company
-from domain.entities.job import JobEntity
+from domain.entities.job import Job, JobEntity
 from domain.entities.contact import Contact, ContactEntity
 
 
@@ -136,134 +136,152 @@ class LeadsRepositoryPort(ABC):
         pass
 
     @abstractmethod
-    async def get_all_contacts_with_companies(self) -> list:
+    async def get_all_contacts_with_companies(self) -> List[Tuple[Contact, Company]]:
         """
-        Retrieve all contacts with their associated companies.
+        Retrieve all contacts with their associated companies from the database.
 
         Returns:
-            list: List of contacts with company information.
+            List[Tuple[Contact, Company]]: List of tuples containing contact and company pairs.
         """
         pass
 
     @abstractmethod
     async def delete_all_data(self) -> None:
         """
-        Delete all leads data (companies, jobs, and contacts) from the database.
+        Delete all leads data (contacts, jobs, companies) from the database.
+        Deletes in correct order to respect foreign key constraints:
+        1. Contacts (references jobs and companies)
+        2. Jobs (references companies)
+        3. Companies
+
+        Returns:
+            None
         """
         pass
 
     @abstractmethod
     async def company_exists_by_name(self, name: str) -> bool:
         """
-        Check if a company exists by name.
+        Check if a company with the given name already exists in the database.
 
         Args:
-            name: The company name to check.
+            name: The name of the company to check.
 
         Returns:
-            True if the company exists.
+            bool: True if a company with this name exists, False otherwise.
         """
         pass
 
     @abstractmethod
     async def get_company_by_name(self, name: str) -> Optional[Company]:
         """
-        Retrieve a company by its name.
+        Retrieve a company by its name from the database.
 
         Args:
-            name: The company name.
+            name: The name of the company to search for.
 
         Returns:
-            The company if found, else None.
+            Optional[Company]: The company if found, None otherwise.
         """
         pass
 
     @abstractmethod
     async def contact_exists_by_email(self, emails: list[str]) -> bool:
         """
-        Check if a contact exists by email.
+        Check if a contact with any of the given emails already exists in the database.
 
         Args:
             emails: List of email addresses to check.
 
         Returns:
-            True if a contact with any of the emails exists.
+            bool: True if a contact with any of these emails exists, False otherwise.
         """
         pass
 
     @abstractmethod
-    async def contact_exists_by_name_and_company(self, name: str, company_id) -> bool:
+    async def contact_exists_by_name_and_company(
+        self, name: str, company_id: Optional[str]
+    ) -> bool:
         """
-        Check if a contact exists by name and company.
+        Check if a contact with the given name and company already exists in the database.
+
+        Used for deduplication when a contact has no email address.
 
         Args:
-            name: The contact name.
-            company_id: The company ID.
+            name: The name of the contact to check.
+            company_id: The company ID to check (can be None).
 
         Returns:
-            True if the contact exists.
+            bool: True if a contact with this name and company exists, False otherwise.
         """
         pass
 
     @abstractmethod
     async def save_company(self, company: Company) -> Company:
         """
-        Save a company to the database.
+        Save a single company to the database.
 
         Args:
             company: The company entity to save.
 
         Returns:
-            The saved company entity.
+            Company: The saved company with its generated ID.
         """
         pass
 
     @abstractmethod
     async def save_contact(self, contact: Contact) -> Contact:
         """
-        Save a contact to the database.
+        Save a single contact to the database.
 
         Args:
             contact: The contact entity to save.
 
         Returns:
-            The saved contact entity.
+            Contact: The saved contact with its generated ID.
         """
         pass
 
     @abstractmethod
     async def job_exists(self, job_title: str, company_name: str) -> bool:
         """
-        Check if a job exists by title and company name.
+        Check if a job with the given title and company name already exists in the database.
 
         Args:
-            job_title: The job title.
-            company_name: The company name.
+            job_title: The title of the job.
+            company_name: The name of the company.
 
         Returns:
-            True if the job exists.
+            bool: True if a job with this title and company exists, False otherwise.
         """
         pass
 
     @abstractmethod
-    async def save_job(self, job) -> None:
+    async def save_job(self, job: Job) -> Job:
         """
-        Save a job to the database.
+        Save a single job to the database.
 
         Args:
             job: The job entity to save.
+
+        Returns:
+            Job: The saved job with its generated ID.
         """
         pass
 
     @abstractmethod
     async def get_or_create_company_stub(self, name: str) -> Company:
         """
-        Get an existing company or create a stub company by name.
+        Get an existing company by name or create a minimal stub company.
+
+        This is used when saving jobs to ensure the company_id foreign key
+        constraint is satisfied. Creates a stub company with only the name
+        if the company does not exist yet.
 
         Args:
-            name: The company name.
+            name: The name of the company.
 
         Returns:
-            The existing or newly created company.
+            Company: The existing or newly created stub company with its ID.
         """
         pass

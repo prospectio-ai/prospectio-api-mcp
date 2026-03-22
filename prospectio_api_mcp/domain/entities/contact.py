@@ -25,6 +25,26 @@ class Contact(BaseModel):
     profile_url: Optional[str] = Field(
         None, description="URL to the contact's profile (e.g., LinkedIn)"
     )
+    short_description: Optional[str] = Field(
+        None, description="Short bio of the contact (~100 chars)"
+    )
+    full_bio: Optional[str] = Field(
+        None, description="Full biography of the contact (500-1500 chars)"
+    )
+    confidence_score: Optional[int] = Field(
+        None,
+        ge=0,
+        le=100,
+        description="Validation confidence score (0-100). Scores >= 70 are verified."
+    )
+    validation_status: Optional[str] = Field(
+        None,
+        description="Validation status: 'verified' (70-100), 'likely_valid' (40-69), 'needs_review' (0-39)"
+    )
+    validation_reasons: Optional[list[str]] = Field(
+        None,
+        description="List of reasons explaining the confidence score"
+    )
 
 
 class ContactEntity(BaseModel):
@@ -33,4 +53,3 @@ class ContactEntity(BaseModel):
     """
     contacts: List[Contact] = Field(..., description="List of contacts")
     pages: Optional[int] = Field(None, description="Total number of pages available")
-    pass

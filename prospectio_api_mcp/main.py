@@ -8,6 +8,7 @@ from infrastructure.services.compatibility_score import CompatibilityScoreLLM
 from infrastructure.services.enrich_leads_agent.agent import EnrichLeadsAgent
 from infrastructure.services.generate_message import GenerateMessageLLM
 from infrastructure.services.profile_database import ProfileDatabase
+from infrastructure.services.campaign_database import CampaignDatabase
 from application.api.mcp_routes import mcp_prospectio
 from config import ActiveJobsDBConfig, JsearchConfig
 from domain.services.leads.strategies.active_jobs_db import ActiveJobsDBStrategy
@@ -22,30 +23,44 @@ from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.services.task_manager import InMemoryTaskManager
 
 
-_LEADS_STRATEGIES: dict[str, Callable] = {
-    "jsearch": lambda location, job_title: JsearchStrategy(
-        port=JsearchAPI(JsearchConfig()), location=location, job_title=job_title # type: ignore
-    ),
-    "active_jobs_db": lambda location, job_title: ActiveJobsDBStrategy(
-        port=ActiveJobsDBAPI(ActiveJobsDBConfig()), # type: ignore
-        location=location,
-        job_title=job_title,
-    ),
-}
+def _create_leads_strategies(leads_database) -> dict[str, Callable]:
+    """Create leads strategies with shared database instance for job streaming."""
+    return {
+        "jsearch": lambda location, job_title: JsearchStrategy(
+            port=JsearchAPI(JsearchConfig(), leads_repository=leads_database),  # type: ignore
+            location=location,
+            job_title=job_title,
+        ),
+        "active_jobs_db": lambda location, job_title: ActiveJobsDBStrategy(
+            port=ActiveJobsDBAPI(ActiveJobsDBConfig(), leads_repository=leads_database),  # type: ignore
+            location=location,
+            job_title=job_title,
+        ),
+    }
 
 in_memory_task_manager = InMemoryTaskManager()
+campaign_database = CampaignDatabase(DatabaseConfig().DATABASE_URL)  # type: ignore
+leads_database = LeadsDatabase(DatabaseConfig().DATABASE_URL)  # type: ignore
+profile_database = ProfileDatabase(DatabaseConfig().DATABASE_URL)  # type: ignore
+
+# Create strategies with leads_database for job streaming
+leads_strategies = _create_leads_strategies(leads_database)
 
 leads_routes = leads_router(
-    _LEADS_STRATEGIES,
-    LeadsDatabase(DatabaseConfig().DATABASE_URL), # type: ignore
+    leads_strategies,
+    leads_database,
     CompatibilityScoreLLM(),
-    ProfileDatabase(DatabaseConfig().DATABASE_URL), # type: ignore
-    EnrichLeadsAgent(in_memory_task_manager),
+    profile_database,
+    EnrichLeadsAgent(in_memory_task_manager, leads_database),
     GenerateMessageLLM(),
-    in_memory_task_manager
+    in_memory_task_manager,
+    campaign_database
 )
 
-profile_routes = profile_router(ProfileDatabase(DatabaseConfig().DATABASE_URL)) # type: ignore
+profile_routes = profile_router(
+    profile_database,
+    leads_database,
+)
 
 
 @contextlib.asynccontextmanager

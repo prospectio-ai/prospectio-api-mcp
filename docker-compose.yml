@@ -28,7 +28,7 @@ services:
       POSTGRES_PASSWORD: prospectio
       POSTGRES_DB: prospectio
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
@@ -41,4 +41,4 @@ services:
 
 networks:
   prospectio:
-    external: true
+    driver: bridge

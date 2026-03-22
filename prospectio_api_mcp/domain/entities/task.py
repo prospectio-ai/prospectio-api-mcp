@@ -1,14 +1,13 @@
+from pydantic import BaseModel, Field
+from typing import Optional, Any
 from datetime import datetime
-from typing import Any
-
-from pydantic import BaseModel
 
 
 class TaskProgress(BaseModel):
-    """Progress information for a running task."""
-    current: int = 0
-    total: int = 0
-    percentage: float = 0.0
+    """Progress information for a task."""
+    current: int = Field(default=0, description="Current item being processed")
+    total: int = Field(default=0, description="Total items to process")
+    percentage: float = Field(default=0.0, description="Completion percentage (0-100)")
 
 
 class Task(BaseModel):
@@ -16,11 +15,11 @@ class Task(BaseModel):
     task_id: str
     message: str
     status: str
-    task_type: str | None = None
-    progress: TaskProgress | None = None
-    error_details: str | None = None
-    result: Any | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-    started_at: datetime | None = None
-    completed_at: datetime | None = None
+    task_type: Optional[str] = Field(default=None, description="Type of task")
+    progress: Optional[TaskProgress] = Field(default=None, description="Progress information")
+    error_details: Optional[str] = Field(default=None, description="Detailed error message")
+    result: Optional[Any] = Field(default=None, description="Task result data")
+    created_at: Optional[datetime] = Field(default=None)
+    updated_at: Optional[datetime] = Field(default=None)
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)

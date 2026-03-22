@@ -1,10 +1,15 @@
+"""Database service for Profile entity persistence."""
+
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from domain.ports.profile_respository import ProfileRepositoryPort
 from domain.entities.profile import Profile
 from domain.entities.work_experience import WorkExperience
+from domain.entities.education import Education
+from domain.entities.certification import Certification
+from domain.entities.language import Language
 from infrastructure.dto.database.profile import ProfileDTO
 
 
@@ -35,17 +40,42 @@ class ProfileDatabase(ProfileRepositoryPort):
         Returns:
             Profile: The converted domain entity.
         """
-        work_experiences = []
+        work_experiences: List[WorkExperience] = []
         if profile_dto.work_experience:
             work_experiences = [
                 WorkExperience(**exp) for exp in profile_dto.work_experience
             ]
 
+        education_list: List[Education] = []
+        if profile_dto.education:
+            education_list = [
+                Education(**edu) for edu in profile_dto.education
+            ]
+
+        certifications_list: List[Certification] = []
+        if profile_dto.certifications:
+            certifications_list = [
+                Certification(**cert) for cert in profile_dto.certifications
+            ]
+
+        languages_list: List[Language] = []
+        if profile_dto.languages:
+            languages_list = [
+                Language(**lang) for lang in profile_dto.languages
+            ]
+
         return Profile(
+            full_name=profile_dto.full_name,
+            email=profile_dto.email,
+            phone=profile_dto.phone,
             job_title=profile_dto.job_title,
             location=profile_dto.location,
             bio=profile_dto.bio,
+            years_of_experience=profile_dto.years_of_experience,
             work_experience=work_experiences,
+            education=education_list,
+            certifications=certifications_list,
+            languages=languages_list,
             technos=profile_dto.technos or []
         )
 
@@ -84,12 +114,35 @@ class ProfileDatabase(ProfileRepositoryPort):
         """
         async with self.async_session() as session:
             try:
-                # Convert work_experience to JSON format
+                # Convert profile to dict and serialize nested objects
                 profile_data = profile.model_dump()
+
+                # Serialize work_experience list
                 if profile_data.get("work_experience"):
                     profile_data["work_experience"] = [
                         exp.model_dump() if hasattr(exp, "model_dump") else exp
                         for exp in profile_data["work_experience"]
+                    ]
+
+                # Serialize education list
+                if profile_data.get("education"):
+                    profile_data["education"] = [
+                        edu.model_dump() if hasattr(edu, "model_dump") else edu
+                        for edu in profile_data["education"]
+                    ]
+
+                # Serialize certifications list
+                if profile_data.get("certifications"):
+                    profile_data["certifications"] = [
+                        cert.model_dump() if hasattr(cert, "model_dump") else cert
+                        for cert in profile_data["certifications"]
+                    ]
+
+                # Serialize languages list
+                if profile_data.get("languages"):
+                    profile_data["languages"] = [
+                        lang.model_dump() if hasattr(lang, "model_dump") else lang
+                        for lang in profile_data["languages"]
                     ]
 
                 # Update existing profile
@@ -111,10 +164,15 @@ class ProfileDatabase(ProfileRepositoryPort):
                 raise e
 
     async def delete_profile(self) -> None:
-        """Delete the profile from the database."""
+        """
+        Delete the profile from the database.
+
+        Returns:
+            None
+        """
         async with self.async_session() as session:
             try:
-                stmt = ProfileDTO.__table__.delete().where(ProfileDTO.id == 1)
+                stmt = delete(ProfileDTO).where(ProfileDTO.id == 1)
                 await session.execute(stmt)
                 await session.commit()
             except Exception as e:

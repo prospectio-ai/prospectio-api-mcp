@@ -8,6 +8,7 @@ from domain.entities.job import Job, JobEntity
 from domain.entities.leads import Leads
 from domain.entities.profile import Profile
 from domain.entities.work_experience import WorkExperience
+from domain.ports.leads_repository import LeadsRepositoryPort
 from domain.ports.profile_respository import ProfileRepositoryPort
 from domain.ports.task_manager import TaskManagerPort
 from domain.services.leads.leads_processor import LeadsProcessor
@@ -21,14 +22,13 @@ from infrastructure.services.enrich_leads_agent.chains.enrich_chain import Enric
 from infrastructure.services.enrich_leads_agent.models.company_info import CompanyInfo
 from infrastructure.services.enrich_leads_agent.models.contact_info import ContactInfo
 from infrastructure.services.enrich_leads_agent.models.make_decision import MakeDecisionResult
-from infrastructure.services.enrich_leads_agent.models.search_results_model import SearchResultModel
-from infrastructure.services.enrich_leads_agent.tools.duck_duck_go_client import DuckDuckGoClient
 from infrastructure.services.leads_database import LeadsDatabase
 from domain.entities.leads_result import LeadsResult
 from infrastructure.services.profile_database import ProfileDatabase
 from config import DatabaseConfig, ActiveJobsDBConfig
 from domain.ports.enrich_leads import EnrichLeadsPort
 from infrastructure.services.task_manager import InMemoryTaskManager
+from tests.ut.fakes.fake_leads_repository import FakeLeadsRepository
 
 @pytest.fixture(autouse=True)
 def patch_database_constructors():
@@ -325,14 +325,26 @@ class TestActiveJobsDBUseCase:
         return InMemoryTaskManager()
 
     @pytest.fixture
-    def enrich_leads(self, task_manager: TaskManagerPort) -> EnrichLeadsPort:
+    def leads_repository(self) -> LeadsRepositoryPort:
         """
-        Create a  EnrichLeadsPort for testing.
+        Create a FakeLeadsRepository for testing.
+
+        Returns:
+            LeadsRepositoryPort: Configured fake leads repository.
+        """
+        return FakeLeadsRepository()
+
+    @pytest.fixture
+    def enrich_leads(
+        self, task_manager: TaskManagerPort, leads_repository: LeadsRepositoryPort
+    ) -> EnrichLeadsPort:
+        """
+        Create a EnrichLeadsPort for testing.
 
         Returns:
             EnrichLeadsPort: Configured enrich leads agent.
         """
-        return EnrichLeadsAgent(task_manager)
+        return EnrichLeadsAgent(task_manager, leads_repository)
 
     @pytest.fixture
     def decide_enrichment(self) -> MakeDecisionResult:
@@ -385,37 +397,6 @@ class TestActiveJobsDBUseCase:
             list[str]: Mocked job titles.
         """
         return ["Senior Python Developer", "Backend Engineer"]
-    
-    @pytest.fixture
-    def crawl_page(self) -> str:
-        """
-        Create a mock crawled page content for testing.
-
-        Returns:
-            str: Mocked crawled page content.
-        """
-        return "<p>This is a mock crawled page content with company information.</p>"
-    
-    @pytest.fixture
-    def search(self) -> list[SearchResultModel]:
-        """
-        Create a mock list of search results for testing.
-
-        Returns:
-            list[SearchResultModel]: Mocked search results.
-        """
-        return [
-            SearchResultModel(
-                title="John Doe - Software Engineer - LinkedIn",
-                url="https://linkedin.com/in/johndoe",
-                snippet="Experienced Software Engineer with expertise in Python and FastAPI."
-            ),
-            SearchResultModel(
-                title="Jane Smith - Backend Developer - LinkedIn",
-                url="https://linkedin.com/in/janesmith",
-                snippet="Skilled Backend Developer specializing in microservices and REST APIs."
-            )
-        ]
     
     @pytest.fixture
     def database_config(self) -> DatabaseConfig:
@@ -563,13 +544,11 @@ class TestActiveJobsDBUseCase:
         company_info: CompanyInfo,
         contact_info: ContactInfo,
         job_titles: list[str],
-        crawl_page: str,
-        search: list[SearchResultModel],
         mock_profile_database: Profile
     ) -> None:
         """
         Test successful lead retrieval from Active Jobs DB API.
-        
+
         Args:
             use_case: The configured use case.
             sample_active_jobs_response: Mock Active Jobs DB response.
@@ -586,7 +565,6 @@ class TestActiveJobsDBUseCase:
             patch.object(EnrichChain, 'extract_other_info_from_description', new_callable=AsyncMock) as mock_company_info, \
             patch.object(EnrichChain, 'extract_contact_from_web_search', new_callable=AsyncMock) as mock_contact_info, \
             patch.object(EnrichChain, 'extract_interesting_job_titles_from_profile', new_callable=AsyncMock) as mock_job_titles, \
-            patch.object(DuckDuckGoClient, 'search', new_callable=AsyncMock) as mock_search, \
             patch.object(use_case, 'profile_repository', autospec=True) as mock_profile_repo, \
             patch.object(use_case, 'repository', autospec=True) as mock_repo:
 
@@ -599,7 +577,6 @@ class TestActiveJobsDBUseCase:
             mock_company_info.return_value = company_info
             mock_contact_info.return_value = contact_info
             mock_job_titles.return_value = job_titles
-            mock_search.return_value = search
 
             mock_repo.save_leads = AsyncMock(return_value=None)
             mock_repo.get_jobs = AsyncMock(return_value=JobEntity(jobs=[])) # type: ignore
@@ -629,15 +606,13 @@ class TestActiveJobsDBUseCase:
         company_info: CompanyInfo,
         contact_info: ContactInfo,
         job_titles: list[str],
-        crawl_page: str,
-        search: list[SearchResultModel],
         mock_profile_database: Profile,
         companies_database: CompanyEntity,
         jobs_database: JobEntity
     ) -> None:
         """
         Test successful lead retrieval from Active Jobs DB API.
-        
+
         Args:
             use_case: The configured use case.
             sample_active_jobs_response: Mock Active Jobs DB response.
@@ -654,7 +629,6 @@ class TestActiveJobsDBUseCase:
             patch.object(EnrichChain, 'extract_other_info_from_description', new_callable=AsyncMock) as mock_company_info, \
             patch.object(EnrichChain, 'extract_contact_from_web_search', new_callable=AsyncMock) as mock_contact_info, \
             patch.object(EnrichChain, 'extract_interesting_job_titles_from_profile', new_callable=AsyncMock) as mock_job_titles, \
-            patch.object(DuckDuckGoClient, 'search', new_callable=AsyncMock) as mock_search, \
             patch.object(use_case, 'repository', autospec=True) as mock_repo, \
             patch.object(use_case, 'profile_repository', autospec=True) as mock_profile_repo:
 
@@ -667,8 +641,7 @@ class TestActiveJobsDBUseCase:
             mock_company_info.return_value = company_info
             mock_contact_info.return_value = contact_info
             mock_job_titles.return_value = job_titles
-            mock_search.return_value = search
-            
+
             mock_repo.save_leads = AsyncMock(return_value=None)
             mock_repo.get_jobs = AsyncMock(return_value=JobEntity(jobs=[])) # type: ignore
             mock_repo.get_companies = AsyncMock(return_value=CompanyEntity(companies=[], pages=1))
