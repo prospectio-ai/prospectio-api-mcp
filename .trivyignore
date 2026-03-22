@@ -1,0 +1,2 @@
+# Trivy ignore file for prospectio-api-mcp
+# Add CVE IDs to ignore (one per line), with a comment explaining why

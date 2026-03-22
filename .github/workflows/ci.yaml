@@ -1,40 +1,84 @@
-name: CI Tests
+name: CI - Prospectio API MCP
 
 on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        
+
     - name: Install Poetry
       uses: snok/install-poetry@v1
       with:
         version: latest
         virtualenvs-create: true
         virtualenvs-in-project: true
-        
+
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: .venv
         key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-        
+        restore-keys: |
+          venv-${{ runner.os }}-
+
     - name: Install dependencies
-      run: poetry install
+      run: poetry install --no-interaction
 
     - name: Setup environment file
       run: cp .env.example .env
 
     - name: Run all tests
-      run: poetry run pytest -v
+      run: poetry run pytest --cov=prospectio_api_mcp --cov-report=html --cov-report=xml
+
+    - name: Trivy FS Scan (report)
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        exit-code: '0'
+        trivy-config: trivy.yaml
+
+    - name: Trivy FS Scan (CRITICAL gate)
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        severity: 'CRITICAL'
+        exit-code: '1'
+        trivy-config: trivy.yaml
+
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: htmlcov/
+        retention-days: 7
+
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@v5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      with:
+        args: >
+          -Dsonar.qualitygate.wait=false

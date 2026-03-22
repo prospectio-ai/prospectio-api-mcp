@@ -27,8 +27,6 @@ pydantic = "2.10.3"
 httpx = {extras = ["http2"], version = "0.28.1"}
 mcp = "1.10.1"
 fastapi = { version = "0.115.14", extras = ["standard"]}
-psycopg = "3.2.4"
-psycopg-binary = "3.2.4"
 SQLAlchemy = "2.0.41"
 asyncpg = "0.30.0"
 greenlet = "3.2.3"
@@ -39,10 +37,10 @@ langchain-community = "0.3.27"
 langchain-mistralai = "0.2.11"
 langchain-google-genai = "2.1.9"
 langgraph = "0.6.4"
-Crawl4AI = "0.7.4"
-ddgs = "9.5.2"
 langchain-openai = "0.3.28"
 email-validator = "2.3.0"
+markitdown = {extras = ["pdf"], version = "0.1.4"}
+ddgs = "9.5.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.4.1"
@@ -50,6 +48,7 @@ pytest-asyncio = "1.0.0"
 poetry-dotenv-plugin = "0.2.0"
 python-dotenv = "1.0.1"
 ipython = "9.4.0"
+pytest-cov = "^7.1.0"
 
 [build-system]
 requires = ["poetry-core"]
