@@ -109,3 +109,14 @@ class ProfileDatabase(ProfileRepositoryPort):
             except Exception as e:
                 await session.rollback()
                 raise e
+
+    async def delete_profile(self) -> None:
+        """Delete the profile from the database."""
+        async with self.async_session() as session:
+            try:
+                stmt = ProfileDTO.__table__.delete().where(ProfileDTO.id == 1)
+                await session.execute(stmt)
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
