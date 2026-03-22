@@ -78,16 +78,13 @@ class CampaignDatabase(CampaignRepositoryPort):
             Optional[Campaign]: The campaign entity if found, otherwise None.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                result = await session.execute(
-                    select(CampaignDB).where(CampaignDB.id == campaign_id)
-                )
-                campaign_db = result.scalars().first()
-                if campaign_db:
-                    return self._convert_db_to_campaign(campaign_db)
-                return None
-            except Exception as e:
-                raise e
+            result = await session.execute(
+                select(CampaignDB).where(CampaignDB.id == campaign_id)
+            )
+            campaign_db = result.scalars().first()
+            if campaign_db:
+                return self._convert_db_to_campaign(campaign_db)
+            return None
 
     async def get_campaigns(self, offset: int, limit: int) -> CampaignEntity:
         """
@@ -101,25 +98,22 @@ class CampaignDatabase(CampaignRepositoryPort):
             CampaignEntity: Entity containing list of campaigns and pagination info.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                total_result = await session.execute(select(CampaignDB.id))
-                total_campaigns = total_result.scalars().all()
-                total_pages = ceil(len(total_campaigns) / limit) if limit > 0 else 1
+            total_result = await session.execute(select(CampaignDB.id))
+            total_campaigns = total_result.scalars().all()
+            total_pages = ceil(len(total_campaigns) / limit) if limit > 0 else 1
 
-                result = await session.execute(
-                    select(CampaignDB)
-                    .order_by(CampaignDB.created_at.desc())
-                    .offset(offset)
-                    .limit(limit)
-                )
-                campaign_dbs = result.scalars().all()
-                campaigns = [
-                    self._convert_db_to_campaign(campaign_db)
-                    for campaign_db in campaign_dbs
-                ]
-                return CampaignEntity(campaigns=campaigns, pages=total_pages)
-            except Exception as e:
-                raise e
+            result = await session.execute(
+                select(CampaignDB)
+                .order_by(CampaignDB.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            campaign_dbs = result.scalars().all()
+            campaigns = [
+                self._convert_db_to_campaign(campaign_db)
+                for campaign_db in campaign_dbs
+            ]
+            return CampaignEntity(campaigns=campaigns, pages=total_pages)
 
     async def update_campaign(self, campaign: Campaign) -> Campaign:
         """
@@ -204,21 +198,18 @@ class CampaignDatabase(CampaignRepositoryPort):
             List[CampaignMessage]: List of campaign messages.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                result = await session.execute(
-                    select(MessageDB)
-                    .where(MessageDB.campaign_id == campaign_id)
-                    .order_by(MessageDB.created_at.desc())
-                    .offset(offset)
-                    .limit(limit)
-                )
-                message_dbs = result.scalars().all()
-                return [
-                    self._convert_db_to_message(message_db)
-                    for message_db in message_dbs
-                ]
-            except Exception as e:
-                raise e
+            result = await session.execute(
+                select(MessageDB)
+                .where(MessageDB.campaign_id == campaign_id)
+                .order_by(MessageDB.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            message_dbs = result.scalars().all()
+            return [
+                self._convert_db_to_message(message_db)
+                for message_db in message_dbs
+            ]
 
     async def get_contacts_without_messages(self) -> List[Tuple[Contact, Company]]:
         """
@@ -233,61 +224,58 @@ class CampaignDatabase(CampaignRepositoryPort):
                 for high-confidence contacts without existing messages.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                # Subquery to get contact_ids that already have messages
-                message_contact_ids = select(MessageDB.contact_id).distinct()
+            # Subquery to get contact_ids that already have messages
+            message_contact_ids = select(MessageDB.contact_id).distinct()
 
-                # Get high-confidence contacts that don't have messages
-                # Filter: validation_status='verified' OR confidence_score >= 70
-                # Also include contacts with NULL validation (legacy data)
-                contacts_result = await session.execute(
-                    select(ContactDB).where(
-                        ~ContactDB.id.in_(message_contact_ids),
-                        or_(
-                            ContactDB.validation_status == ValidationStatus.VERIFIED.value,
-                            ContactDB.confidence_score >= MIN_CONFIDENCE_SCORE_FOR_CAMPAIGN,
-                            # Include legacy contacts without validation data
-                            ContactDB.validation_status.is_(None),
-                        )
+            # Get high-confidence contacts that don't have messages
+            # Filter: validation_status='verified' OR confidence_score >= 70
+            # Also include contacts with NULL validation (legacy data)
+            contacts_result = await session.execute(
+                select(ContactDB).where(
+                    ~ContactDB.id.in_(message_contact_ids),
+                    or_(
+                        ContactDB.validation_status == ValidationStatus.VERIFIED.value,
+                        ContactDB.confidence_score >= MIN_CONFIDENCE_SCORE_FOR_CAMPAIGN,
+                        # Include legacy contacts without validation data
+                        ContactDB.validation_status.is_(None),
                     )
                 )
-                contact_dbs = contacts_result.scalars().all()
+            )
+            contact_dbs = contacts_result.scalars().all()
 
-                if not contact_dbs:
-                    return []
+            if not contact_dbs:
+                return []
 
-                # Get all unique company IDs
-                company_ids = list({
-                    contact_db.company_id
-                    for contact_db in contact_dbs
-                    if contact_db.company_id is not None
-                })
+            # Get all unique company IDs
+            company_ids = list({
+                contact_db.company_id
+                for contact_db in contact_dbs
+                if contact_db.company_id is not None
+            })
 
-                # Fetch all companies in one query
-                companies_map: dict[str, CompanyDB] = {}
-                if company_ids:
-                    companies_result = await session.execute(
-                        select(CompanyDB).where(CompanyDB.id.in_(company_ids))
+            # Fetch all companies in one query
+            companies_map: dict[str, CompanyDB] = {}
+            if company_ids:
+                companies_result = await session.execute(
+                    select(CompanyDB).where(CompanyDB.id.in_(company_ids))
+                )
+                company_dbs = companies_result.scalars().all()
+                companies_map = {company_db.id: company_db for company_db in company_dbs}
+
+            # Build result list of tuples
+            result: List[Tuple[Contact, Company]] = []
+            for contact_db in contact_dbs:
+                company_db = companies_map.get(contact_db.company_id) if contact_db.company_id else None
+                if company_db:
+                    contact = self._convert_db_to_contact(
+                        contact_db,
+                        company_db.name,
+                        None
                     )
-                    company_dbs = companies_result.scalars().all()
-                    companies_map = {company_db.id: company_db for company_db in company_dbs}
+                    company = self._convert_db_to_company(company_db)
+                    result.append((contact, company))
 
-                # Build result list of tuples
-                result: List[Tuple[Contact, Company]] = []
-                for contact_db in contact_dbs:
-                    company_db = companies_map.get(contact_db.company_id) if contact_db.company_id else None
-                    if company_db:
-                        contact = self._convert_db_to_contact(
-                            contact_db,
-                            company_db.name,
-                            None
-                        )
-                        company = self._convert_db_to_company(company_db)
-                        result.append((contact, company))
-
-                return result
-            except Exception as e:
-                raise e
+            return result
 
     async def contact_has_message(self, contact_id: str) -> bool:
         """
@@ -300,13 +288,10 @@ class CampaignDatabase(CampaignRepositoryPort):
             bool: True if contact has a message, False otherwise.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                result = await session.execute(
-                    select(exists().where(MessageDB.contact_id == contact_id))
-                )
-                return result.scalar() or False
-            except Exception as e:
-                raise e
+            result = await session.execute(
+                select(exists().where(MessageDB.contact_id == contact_id))
+            )
+            return result.scalar() or False
 
     def _convert_db_to_campaign(self, campaign_db: CampaignDB) -> Campaign:
         """

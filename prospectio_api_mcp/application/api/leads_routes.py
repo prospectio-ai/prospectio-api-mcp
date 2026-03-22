@@ -37,6 +37,9 @@ from domain.entities.task import Task
 
 logger = logging.getLogger(__name__)
 
+# Set to hold references to background tasks, preventing premature garbage collection (S7502)
+_background_tasks: set[asyncio.Task] = set()
+
 
 async def run_task_with_error_handling(
     coro,
@@ -110,7 +113,7 @@ def leads_router(
         type: str = Path(..., description="Lead source"),
         offset: int = Path(..., description="Offset for pagination"),
         limit: int = Path(..., description="Limit for pagination"),
-    ) -> Union[Leads, CompanyEntity, JobEntity, ContactEntity]:
+    ) -> Leads | CompanyEntity | JobEntity | ContactEntity:
         try:
             leads = await GetLeadsUseCase(type, repository).get_leads(offset, limit)
             return leads
@@ -151,7 +154,7 @@ def leads_router(
             strategy = jobs_strategy[request.source](location, job_params)
             processor = LeadsProcessor(compatibility)
 
-            asyncio.create_task(
+            task = asyncio.create_task(
                 run_task_with_error_handling(
                     InsertLeadsUseCase(
                         task_uuid, strategy, repository, processor, profile_repository, enrich_port, task_manager
@@ -160,6 +163,8 @@ def leads_router(
                     task_uuid
                 )
             )
+            _background_tasks.add(task)
+            task.add_done_callback(_background_tasks.discard)
 
             return Task(
                 task_id=task_uuid,
@@ -270,7 +275,7 @@ def leads_router(
         """
         task_uuid = str(uuid4())
         try:
-            asyncio.create_task(
+            task = asyncio.create_task(
                 run_task_with_error_handling(
                     GenerateCampaignUseCase(
                         task_uuid,
@@ -284,6 +289,8 @@ def leads_router(
                     task_uuid
                 )
             )
+            _background_tasks.add(task)
+            task.add_done_callback(_background_tasks.discard)
 
             return Task(
                 task_id=task_uuid,

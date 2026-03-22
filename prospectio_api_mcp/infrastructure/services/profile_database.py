@@ -90,17 +90,13 @@ class ProfileDatabase(ProfileRepositoryPort):
             Optional[Profile]: The profile entity if found, None otherwise.
         """
         async with self.async_session() as session:
-            try:
-                stmt = select(ProfileDTO).where(ProfileDTO.id == 1)
-                result = await session.execute(stmt)
-                profile_dto = result.scalar_one_or_none()
+            stmt = select(ProfileDTO).where(ProfileDTO.id == 1)
+            result = await session.execute(stmt)
+            profile_dto = result.scalar_one_or_none()
 
-                if profile_dto:
-                    return self._convert_dto_to_entity(profile_dto)
-                return None
-
-            except Exception as e:
-                raise e
+            if profile_dto:
+                return self._convert_dto_to_entity(profile_dto)
+            return None
 
     async def upsert_profile(self, profile: Profile) -> ProfileDTO:
         """

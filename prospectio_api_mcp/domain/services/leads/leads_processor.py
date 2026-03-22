@@ -20,7 +20,7 @@ class LeadsProcessor:
         self.semaphore = asyncio.Semaphore(concurrency_limit)
         self.compatibility_score_port = compatibility_score_port
 
-    async def deduplicate_contacts(self, contacts: ContactEntity) -> ContactEntity:
+    def deduplicate_contacts(self, contacts: ContactEntity) -> ContactEntity:
         """
         Remove duplicate contacts based on normalized name and title.
 
@@ -41,7 +41,7 @@ class LeadsProcessor:
                 unique_contacts.append(contact)
         return ContactEntity(contacts=unique_contacts) # type: ignore
 
-    async def new_contacts(
+    def new_contacts(
         self, contacts: ContactEntity, db_contacts: ContactEntity
     ) -> ContactEntity:
         """
@@ -72,7 +72,7 @@ class LeadsProcessor:
         ]
         return ContactEntity(contacts=new_contacts) # type: ignore
 
-    async def change_contacts_job_and_company_id(
+    def change_contacts_job_and_company_id(
         self, contacts: ContactEntity, jobs: JobEntity, companies: CompanyEntity
     ) -> ContactEntity:
         """
@@ -113,7 +113,7 @@ class LeadsProcessor:
                 contact.job_id = job_lookup.get(key, contact.job_id)
         return contacts
 
-    async def change_jobs_company_id(
+    def change_jobs_company_id(
         self, jobs: JobEntity, companies: CompanyEntity, db_companies: CompanyEntity
     ) -> JobEntity:
         """
@@ -145,7 +145,7 @@ class LeadsProcessor:
                     job.company_id = company_id
         return jobs
 
-    async def new_jobs(self, jobs: JobEntity, db_jobs: JobEntity) -> JobEntity:
+    def new_jobs(self, jobs: JobEntity, db_jobs: JobEntity) -> JobEntity:
         """
         Filter out jobs that already exist in the database, based on normalized job title, location, type, and company_id.
 
@@ -181,7 +181,7 @@ class LeadsProcessor:
         ]
         return JobEntity(jobs=new_jobs) # type: ignore
 
-    async def new_companies(
+    def new_companies(
         self, companies: CompanyEntity, db_companies: CompanyEntity
     ) -> CompanyEntity:
         """
@@ -206,7 +206,7 @@ class LeadsProcessor:
         ]
         return CompanyEntity(companies=new_companies) # type: ignore
 
-    async def deduplicate_jobs(self, jobs: JobEntity) -> JobEntity:
+    def deduplicate_jobs(self, jobs: JobEntity) -> JobEntity:
         """
         Remove duplicate jobs based on normalized title, location, type, and company_id.
 
@@ -231,7 +231,7 @@ class LeadsProcessor:
 
         return JobEntity(jobs=unique_jobs) # type: ignore
 
-    async def deduplicate_companies(
+    def deduplicate_companies(
         self, companies: CompanyEntity, jobs: JobEntity
     ) -> CompanyEntity:
         """
@@ -267,7 +267,7 @@ class LeadsProcessor:
 
         return CompanyEntity(companies=unique_companies) # type: ignore
 
-    async def calculate_statistics(self, leads: Leads) -> LeadsResult:
+    def calculate_statistics(self, leads: Leads) -> LeadsResult:
         """
         Calculate and return statistics about the inserted leads (companies, jobs, contacts).
 
