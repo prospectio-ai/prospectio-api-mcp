@@ -40,7 +40,7 @@ jobs:
         run: cp .env.example .env
 
       - name: Run tests with coverage
-        run: uv run pytest --cov-report=html --cov-report=xml:coverage.xml
+        run: uv run pytest --cov-report=html
 
       - name: Trivy FS report
         uses: aquasecurity/trivy-action@master

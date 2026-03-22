@@ -64,9 +64,11 @@ packages = ["prospectio_api_mcp"]
 source = ["prospectio_api_mcp"]
 omit = [
     "prospectio_api_mcp/main.py",
+    "prospectio_api_mcp/dependencies.py",
 ]
 
 [tool.coverage.report]
 omit = [
     "prospectio_api_mcp/main.py",
+    "prospectio_api_mcp/dependencies.py",
 ]
