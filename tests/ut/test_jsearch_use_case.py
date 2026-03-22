@@ -459,7 +459,6 @@ class TestJsearchUseCase:
             mock_company_info.return_value = company_info
             mock_contact_info.return_value = contact_info
             mock_job_titles.return_value = job_titles
-            mock_crawl.return_value = crawl_page
             mock_search.return_value = search
 
             mock_repo.save_leads = AsyncMock(return_value=None)
@@ -531,7 +530,6 @@ class TestJsearchUseCase:
             mock_company_info.return_value = company_info
             mock_contact_info.return_value = contact_info
             mock_job_titles.return_value = job_titles
-            mock_crawl.return_value = crawl_page
             mock_search.return_value = search
             
             mock_repo.save_leads = AsyncMock(return_value=None)
