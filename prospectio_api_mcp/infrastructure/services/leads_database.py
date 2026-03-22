@@ -136,7 +136,7 @@ class LeadsDatabase(LeadsRepositoryPort):
                 job_db = result.scalars().all()
 
                 if job_db:
-                    jobs = [self._convert_db_to_job(job) for job in job_db] # type: ignore
+                    jobs = [self._convert_db_to_job(job, None) for job in job_db]
                     return JobEntity(jobs=jobs) # type: ignore
                 return JobEntity(jobs=[]) # type: ignore
 
@@ -269,13 +269,13 @@ class LeadsDatabase(LeadsRepositoryPort):
                 result = await session.execute(stmt)
                 contact_dbs = result.scalars().all()
                 contacts = [
-                    self._convert_db_to_contact(contact_db) # type: ignore
+                    self._convert_db_to_contact(contact_db, None, None)
                     for contact_db in contact_dbs
                 ]
                 return ContactEntity(contacts=contacts) # type: ignore
             except Exception as e:
                 raise e
-    
+
     async def get_contact_by_id(self, contact_id: str) -> Optional[Contact]:
         """
         Retrieve a contact by its ID from the database.
@@ -348,7 +348,7 @@ class LeadsDatabase(LeadsRepositoryPort):
                     .limit(limit)
                 )
                 job_dbs = jobs_result.scalars().all()
-                jobs = [self._convert_db_to_job(job_db) for job_db in job_dbs] # type: ignore
+                jobs = [self._convert_db_to_job(job_db, None) for job_db in job_dbs]
                 job_ids = [job_db.id for job_db in job_dbs]
                 company_ids = list(
                     {
@@ -381,7 +381,7 @@ class LeadsDatabase(LeadsRepositoryPort):
                 else:
                     contact_dbs = []
                 contacts = [
-                    self._convert_db_to_contact(contact_db) # type: ignore
+                    self._convert_db_to_contact(contact_db, None, None)
                     for contact_db in contact_dbs
                 ]
 

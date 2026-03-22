@@ -1,4 +1,3 @@
-from typing import Optional, Union
 from domain.entities.company import CompanyEntity
 from domain.entities.contact import ContactEntity
 from domain.entities.job import JobEntity
@@ -25,7 +24,7 @@ class GetLeadsUseCase:
 
     async def get_leads(
         self, offset: int, limit: int
-    ) -> Union[Leads, CompanyEntity, JobEntity, ContactEntity]:
+    ) -> Leads | CompanyEntity | JobEntity | ContactEntity:
         """
         Retrieve data based on the specified type from the repository.
 
