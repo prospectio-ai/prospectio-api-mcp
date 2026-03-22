@@ -125,6 +125,13 @@ def upgrade() -> None:
         )
     """))
 
+    # Add missing columns to contacts (for databases created with older schema)
+    op.execute(sa.text("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS short_description VARCHAR(255)"))
+    op.execute(sa.text("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS full_bio TEXT"))
+    op.execute(sa.text("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS confidence_score INTEGER"))
+    op.execute(sa.text("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS validation_status VARCHAR(50)"))
+    op.execute(sa.text("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS validation_reasons TEXT[]"))
+
     # Create indexes
     op.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_jobs_company_id ON jobs(company_id)"))
     op.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_contacts_company_id ON contacts(company_id)"))
