@@ -24,6 +24,12 @@ WORKDIR /app
 
 COPY prospectio_api_mcp ./prospectio_api_mcp
 
+RUN addgroup --gid 1001 --system appgroup && \
+    adduser --uid 1001 --system --ingroup appgroup appuser && \
+    chown -R appuser:appgroup /app
+
+USER appuser
+
 EXPOSE 7002
 
 CMD ["uv", "run", "fastapi", "run", "prospectio_api_mcp/main.py", "--host", "0.0.0.0", "--port", "7002"]
