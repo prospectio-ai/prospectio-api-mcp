@@ -394,6 +394,134 @@ class LeadsDatabase(LeadsRepositoryPort):
             except Exception as e:
                 raise e
 
+    async def get_all_contacts_with_companies(self) -> list:
+        """Retrieve all contacts with their associated companies."""
+        async with AsyncSession(self.engine) as session:
+            result = await session.execute(
+                select(ContactDB, CompanyDB)
+                .outerjoin(CompanyDB, ContactDB.company_id == CompanyDB.id)
+            )
+            rows = result.all()
+            return [
+                (
+                    self._convert_db_to_contact(contact_db, company_db.name if company_db else None, None),
+                    self._convert_db_to_company(company_db) if company_db else None,
+                )
+                for contact_db, company_db in rows
+            ]
+
+    async def delete_all_data(self) -> None:
+        """Delete all leads data from the database."""
+        async with AsyncSession(self.engine) as session:
+            try:
+                await session.execute(ContactDB.__table__.delete())
+                await session.execute(JobDB.__table__.delete())
+                await session.execute(CompanyDB.__table__.delete())
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def company_exists_by_name(self, name: str) -> bool:
+        """Check if a company exists by name."""
+        async with AsyncSession(self.engine) as session:
+            result = await session.execute(
+                select(CompanyDB.id).where(CompanyDB.name == name).limit(1)
+            )
+            return result.scalars().first() is not None
+
+    async def get_company_by_name(self, name: str) -> Optional[Company]:
+        """Retrieve a company by its name."""
+        async with AsyncSession(self.engine) as session:
+            result = await session.execute(
+                select(CompanyDB).where(CompanyDB.name == name).limit(1)
+            )
+            company_db = result.scalars().first()
+            if company_db:
+                return self._convert_db_to_company(company_db)
+            return None
+
+    async def contact_exists_by_email(self, emails: list[str]) -> bool:
+        """Check if a contact exists by email."""
+        async with AsyncSession(self.engine) as session:
+            for email in emails:
+                result = await session.execute(
+                    select(ContactDB.id).where(ContactDB.email.contains([email])).limit(1)
+                )
+                if result.scalars().first() is not None:
+                    return True
+            return False
+
+    async def contact_exists_by_name_and_company(self, name: str, company_id) -> bool:
+        """Check if a contact exists by name and company."""
+        async with AsyncSession(self.engine) as session:
+            result = await session.execute(
+                select(ContactDB.id).where(
+                    ContactDB.name == name,
+                    ContactDB.company_id == company_id,
+                ).limit(1)
+            )
+            return result.scalars().first() is not None
+
+    async def save_company(self, company: Company) -> Company:
+        """Save a company to the database."""
+        async with AsyncSession(self.engine) as session:
+            try:
+                company_db = self._convert_company_to_db(company)
+                session.add(company_db)
+                await session.commit()
+                return company
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def save_contact(self, contact: Contact) -> Contact:
+        """Save a contact to the database."""
+        async with AsyncSession(self.engine) as session:
+            try:
+                contact_db = self._convert_contact_to_db(contact)
+                session.add(contact_db)
+                await session.commit()
+                return contact
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def job_exists(self, job_title: str, company_name: str) -> bool:
+        """Check if a job exists by title and company name."""
+        async with AsyncSession(self.engine) as session:
+            result = await session.execute(
+                select(JobDB.id)
+                .join(CompanyDB, JobDB.company_id == CompanyDB.id)
+                .where(JobDB.job_title == job_title, CompanyDB.name == company_name)
+                .limit(1)
+            )
+            return result.scalars().first() is not None
+
+    async def save_job(self, job) -> None:
+        """Save a job to the database."""
+        async with AsyncSession(self.engine) as session:
+            try:
+                from domain.entities.job import Job as JobDomain
+                if isinstance(job, JobDomain):
+                    job_db = self._convert_job_to_db(job)
+                else:
+                    job_db = job
+                session.add(job_db)
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def get_or_create_company_stub(self, name: str) -> Company:
+        """Get an existing company or create a stub company by name."""
+        existing = await self.get_company_by_name(name)
+        if existing:
+            return existing
+        import uuid
+        stub = Company(id=str(uuid.uuid4()), name=name)
+        return await self.save_company(stub)
+
     def _convert_company_to_db(self, company_data: Company) -> CompanyDB:
         """
         Convert domain company entity to database company model.

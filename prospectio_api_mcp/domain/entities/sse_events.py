@@ -51,4 +51,5 @@ class MessageGeneratedData(BaseModel):
     subject: str
     message: str
     status: str
+    error: Optional[str] = None
     created_at: datetime.datetime
