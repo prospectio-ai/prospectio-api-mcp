@@ -52,7 +52,6 @@ coverage.xml
 Pipfile.lock:wq
 
 # uv
-uv.lock
 
 # mypy
 .mypy_cache/
@@ -96,4 +95,6 @@ secrets.*
 #Langgraph
 graph.png
 
+.scannerwork
+coverage
 

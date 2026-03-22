@@ -1,7 +1,5 @@
-from re import A
 import httpx
 from uuid import uuid4
-from typing import TypeVar
 from prospectio_api_mcp.domain.ports.fetch_leads import FetchLeadsPort
 from infrastructure.dto.rapidapi.active_jobs_db import ActiveJobsResponseDTO
 from config import ActiveJobsDBConfig
@@ -10,8 +8,6 @@ from domain.entities.company import Company, CompanyEntity
 from domain.entities.job import Job, JobEntity
 from domain.entities.leads import Leads
 from datetime import datetime
-
-T = TypeVar("T")
 
 
 class ActiveJobsDBAPI(FetchLeadsPort):
@@ -30,7 +26,7 @@ class ActiveJobsDBAPI(FetchLeadsPort):
         self.api_keys = config.RAPIDAPI_API_KEY
         self.endpoint = "/active-ats-7d"
 
-    async def _check_error(
+    async def _check_error[T](
         self, client: BaseApiClient, result: httpx.Response, dto_type: type[T]
     ) -> T:
         """
@@ -50,7 +46,7 @@ class ActiveJobsDBAPI(FetchLeadsPort):
         """
         if result.status_code != 200:
             await client.close()
-            raise Exception(f"Failed to fetch jobs: {result.text}")
+            raise RuntimeError(f"Failed to fetch jobs: {result.text}")
         dto = dto_type(**{"active_jobs": result.json()})
         await client.close()
         return dto
@@ -87,7 +83,7 @@ class ActiveJobsDBAPI(FetchLeadsPort):
             Exception: If all API keys are exhausted or other errors occur.
         """
         if key_index >= len(self.api_keys):
-            raise Exception("All API keys exhausted due to rate limiting")
+            raise RuntimeError("All API keys exhausted due to rate limiting")
 
         headers = self._get_headers(self.api_keys[key_index])
         client = BaseApiClient(self.api_base, headers)

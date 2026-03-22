@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import traceback
-from typing import Union
 from fastapi import APIRouter, HTTPException, Path
 from application.requests.insert_leads import InsertLeadsRequest
 from application.use_cases.generate_message import GenerateMessageUseCase
@@ -29,6 +28,8 @@ from domain.entities.task import Task
 
 
 logger = logging.getLogger(__name__)
+
+_background_tasks: set[asyncio.Task] = set()
 
 
 def leads_router(
@@ -66,7 +67,7 @@ def leads_router(
         type: str = Path(..., description="Lead source"),
         offset: int = Path(..., description="Offset for pagination"),
         limit: int = Path(..., description="Limit for pagination"),
-    ) -> Union[Leads, CompanyEntity, JobEntity, ContactEntity]:
+    ) -> Leads | CompanyEntity | JobEntity | ContactEntity:
         try:
             leads = await GetLeadsUseCase(type, repository).get_leads(offset, limit)
             return leads
@@ -108,11 +109,13 @@ def leads_router(
             strategy = jobs_strategy[request.source](location, job_params)
             processor = LeadsProcessor(compatibility)
 
-            asyncio.create_task(
+            task = asyncio.create_task(
                 InsertLeadsUseCase(
                     task_uuid, strategy, repository, processor, profile_repository, enrich_port, task_manager
                 ).insert_leads()
             )
+            _background_tasks.add(task)
+            task.add_done_callback(_background_tasks.discard)
 
             return Task(
                 task_id=task_uuid,

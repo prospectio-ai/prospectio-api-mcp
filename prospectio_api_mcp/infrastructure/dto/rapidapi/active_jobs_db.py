@@ -1,13 +1,15 @@
 from typing import Optional, List, Any
 from pydantic import BaseModel, Field, RootModel
 
+JSON_LD_TYPE_ALIAS = "@type"
+
 
 class AddressDTO(BaseModel):
     """
     DTO for postal address information.
     """
 
-    type: Optional[str] = Field(None, alias="@type")
+    type: Optional[str] = Field(None, alias=JSON_LD_TYPE_ALIAS)
     addressCountry: Optional[str] = None
     addressLocality: Optional[str] = None
     addressRegion: Optional[str] = None
@@ -18,7 +20,7 @@ class PlaceDTO(BaseModel):
     DTO for place/location information.
     """
 
-    type: Optional[str] = Field(None, alias="@type")
+    type: Optional[str] = Field(None, alias=JSON_LD_TYPE_ALIAS)
     address: Optional[AddressDTO] = None
 
 
@@ -27,7 +29,7 @@ class LocationRequirementDTO(BaseModel):
     DTO for location requirements.
     """
 
-    type: Optional[str] = Field(None, alias="@type")
+    type: Optional[str] = Field(None, alias=JSON_LD_TYPE_ALIAS)
     name: Optional[str] = None
 
 
