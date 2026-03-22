@@ -128,8 +128,13 @@ jobs:
       # ── 11. Update deployment manifest ─────────────────────────────
       - name: Update deployment image tag
         run: |
-          sed -i "s|image: kaiohz/prospectio-api-mcp:.*|image: kaiohz/prospectio-api-mcp:${{ steps.sha.outputs.sha }}|" \
-            flux-repo/dev/prospectio/prospectio-api-mcp/deployment.yaml
+          DEPLOYMENT_FILE="flux-repo/dev/prospectio/prospectio-api-mcp/deployment.yaml"
+          if [ -f "$DEPLOYMENT_FILE" ]; then
+            sed -i "s|image: kaiohz/prospectio-api-mcp:.*|image: kaiohz/prospectio-api-mcp:${{ steps.sha.outputs.sha }}|" "$DEPLOYMENT_FILE"
+          else
+            echo "Error: Deployment file not found at $DEPLOYMENT_FILE"
+            exit 1
+          fi
 
       # ── 12. Commit and push to Flux repo ───────────────────────────
       - name: Commit and push to Flux repo
@@ -137,6 +142,6 @@ jobs:
           cd flux-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add dev/prospectio/prospectio-api-mcp/deployment.yaml
           git commit -m "deploy: prospectio-api-mcp@${{ steps.sha.outputs.sha }}"
           git push origin main
