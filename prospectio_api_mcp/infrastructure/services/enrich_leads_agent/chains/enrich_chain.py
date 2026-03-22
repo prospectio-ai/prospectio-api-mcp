@@ -4,9 +4,10 @@ from domain.services.prompt_loader import PromptLoader
 from infrastructure.api.llm_generic_client import LLMGenericClient
 from langchain_core.output_parsers import StrOutputParser
 from infrastructure.services.enrich_leads_agent.models.company_info import CompanyInfo
-from infrastructure.services.enrich_leads_agent.models.contact_info import ContactInfo
+from infrastructure.services.enrich_leads_agent.models.contact_info import ContactInfo, ContactsList
 import logging
 import traceback
+from infrastructure.services.enrich_leads_agent.models.contact_bio import ContactBio
 from infrastructure.services.enrich_leads_agent.models.job_titles import JobTitles
 from infrastructure.services.enrich_leads_agent.models.search_results_model import SearchResultModel
 
@@ -117,6 +118,39 @@ class EnrichChain:
             logger.error(f"Error in extract_contact_from_web_content: {e}\n{traceback.format_exc()}")
             return None
 
+    async def extract_contacts_from_answer(self, company: str, answer: str) -> list[ContactInfo]:
+        """
+        Extract multiple contacts from a search answer text (e.g., from Perplexity).
+
+        Args:
+            company (str): The name of the company.
+            answer (str): The full answer text containing contact information.
+
+        Returns:
+            list[ContactInfo]: List of extracted contacts.
+        """
+        if not answer or not answer.strip():
+            return []
+
+        prompt = self.prompt_loader.load_prompt("contacts_from_answer")
+        prompt_template = ChatPromptTemplate.from_messages([
+            (
+                "user",
+                (
+                    prompt
+                ),
+            )
+        ])
+        chain = prompt_template | self.llm_client.with_structured_output(ContactsList)
+        try:
+            result = await chain.ainvoke({"company": company, "answer": answer})
+            contacts_list = ContactsList.model_validate(result)
+            logger.info(f"Extracted {len(contacts_list.contacts)} contacts from answer")
+            return contacts_list.contacts
+        except Exception as e:
+            logger.error(f"Error in extract_contacts_from_answer: {e}\n{traceback.format_exc()}")
+            return []
+
     async def extract_interesting_job_titles_from_profile(self, profile: Profile) -> list[str]:
         """
         Extract job titles of interesting prospects from the user profile using the LLM.
@@ -144,3 +178,46 @@ class EnrichChain:
         except Exception as e:
             logger.error(f"Error in extract_interesting_job_titles_from_profile: {e}\n{traceback.format_exc()}")
             return []
+
+    async def extract_contact_bio(
+        self,
+        name: str,
+        position: str,
+        company: str,
+        search_results: str,
+    ) -> ContactBio | None:
+        """
+        Extract contact biography from search results using the LLM.
+
+        Args:
+            name: Full name of the contact.
+            position: Job title/position of the contact.
+            company: Company where the contact works.
+            search_results: The search results text containing bio information.
+
+        Returns:
+            ContactBio: The extracted biography, or None if extraction fails.
+        """
+        if not search_results or not search_results.strip():
+            return None
+
+        prompt = self.prompt_loader.load_prompt("contact_bio")
+        prompt_template = ChatPromptTemplate.from_messages([("user", prompt)])
+        chain = prompt_template | self.llm_client.with_structured_output(ContactBio)
+        try:
+            result = await chain.ainvoke({
+                "name": name,
+                "position": position,
+                "company": company,
+                "search_results": search_results,
+            })
+            contact_bio = ContactBio.model_validate(result)
+            logger.info(
+                f"Extracted bio for {name}: "
+                f"{len(contact_bio.short_description)} chars short, "
+                f"{len(contact_bio.full_bio)} chars full"
+            )
+            return contact_bio
+        except Exception as e:
+            logger.error(f"Error in extract_contact_bio: {e}\n{traceback.format_exc()}")
+            return None

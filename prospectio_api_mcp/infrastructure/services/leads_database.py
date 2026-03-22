@@ -1,7 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy import or_, select
-from domain.entities import job
+from sqlalchemy import or_, select, delete, func, exists, cast, Text
+from sqlalchemy.dialects.postgresql import ARRAY
 from domain.ports.leads_repository import LeadsRepositoryPort
 from domain.entities.leads import Leads
 from infrastructure.dto.database.company import Company as CompanyDB
@@ -593,9 +593,14 @@ class LeadsDatabase(LeadsRepositoryPort):
             title=contact_data.title,
             phone=contact_data.phone,
             profile_url=contact_data.profile_url,
+            short_description=contact_data.short_description,
+            full_bio=contact_data.full_bio,
+            confidence_score=contact_data.confidence_score,
+            validation_status=contact_data.validation_status,
+            validation_reasons=contact_data.validation_reasons,
         )
 
-    def _convert_db_to_job(self, job_db: JobDB, company_name: Optional[str]) -> Job:
+    def _convert_db_to_job(self, job_db: JobDB, company_name: Optional[str] = None) -> Job:
         """
         Convert database job model to domain job entity.
 
@@ -668,4 +673,330 @@ class LeadsDatabase(LeadsRepositoryPort):
             title=contact_db.title,
             phone=contact_db.phone,
             profile_url=contact_db.profile_url,
+            short_description=contact_db.short_description,
+            full_bio=contact_db.full_bio,
+            confidence_score=contact_db.confidence_score,
+            validation_status=contact_db.validation_status,
+            validation_reasons=contact_db.validation_reasons,
         )
+
+    async def get_all_contacts_with_companies(self) -> List[Tuple[Contact, Company]]:
+        """
+        Retrieve all contacts with their associated companies from the database.
+
+        Returns:
+            List[Tuple[Contact, Company]]: List of tuples containing contact and company pairs.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                # Fetch all contacts
+                contacts_result = await session.execute(select(ContactDB))
+                contact_dbs = contacts_result.scalars().all()
+
+                if not contact_dbs:
+                    return []
+
+                # Get all unique company IDs
+                company_ids = list({
+                    contact_db.company_id
+                    for contact_db in contact_dbs
+                    if contact_db.company_id is not None
+                })
+
+                # Fetch all companies in one query
+                companies_map: dict[str, CompanyDB] = {}
+                if company_ids:
+                    companies_result = await session.execute(
+                        select(CompanyDB).where(CompanyDB.id.in_(company_ids))
+                    )
+                    company_dbs = companies_result.scalars().all()
+                    companies_map = {company_db.id: company_db for company_db in company_dbs}
+
+                # Build result list of tuples
+                result: List[Tuple[Contact, Company]] = []
+                for contact_db in contact_dbs:
+                    company_db = companies_map.get(contact_db.company_id) if contact_db.company_id else None
+                    if company_db:
+                        contact = self._convert_db_to_contact(
+                            contact_db,
+                            company_db.name,
+                            None
+                        )
+                        company = self._convert_db_to_company(company_db)
+                        result.append((contact, company))
+
+                return result
+            except Exception as e:
+                raise e
+
+    async def company_exists_by_name(self, name: str) -> bool:
+        """
+        Check if a company with the given name already exists in the database.
+
+        Args:
+            name: The name of the company to check.
+
+        Returns:
+            bool: True if a company with this name exists, False otherwise.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                result = await session.execute(
+                    select(exists().where(CompanyDB.name == name))
+                )
+                return result.scalar() or False
+            except Exception as e:
+                raise e
+
+    async def get_company_by_name(self, name: str) -> Optional[Company]:
+        """
+        Retrieve a company by its name from the database.
+
+        Args:
+            name: The name of the company to search for.
+
+        Returns:
+            Optional[Company]: The company if found, None otherwise.
+        """
+        async with AsyncSession(self.engine) as session:
+            result = await session.execute(
+                select(CompanyDB).where(CompanyDB.name == name)
+            )
+            company_db = result.scalar_one_or_none()
+            if company_db:
+                return self._convert_db_to_company(company_db)
+            return None
+
+    async def contact_exists_by_email(self, emails: list[str]) -> bool:
+        """
+        Check if a contact with any of the given emails already exists in the database.
+        Uses PostgreSQL array overlap operator to check if any email in the input list
+        exists in any contact's email array.
+
+        Args:
+            emails: List of email addresses to check.
+
+        Returns:
+            bool: True if a contact with any of these emails exists, False otherwise.
+        """
+        if not emails:
+            return False
+
+        async with AsyncSession(self.engine) as session:
+            try:
+                # Use PostgreSQL's && (overlap) operator for array comparison
+                # Cast the input list to ARRAY(Text) to match the column type (text[])
+                result = await session.execute(
+                    select(exists().where(
+                        ContactDB.email.overlap(cast(emails, ARRAY(Text)))
+                    ))
+                )
+                return result.scalar() or False
+            except Exception as e:
+                raise e
+
+    async def contact_exists_by_name_and_company(
+        self, name: str, company_id: Optional[str]
+    ) -> bool:
+        """
+        Check if a contact with the given name and company already exists in the database.
+
+        Used for deduplication when a contact has no email address.
+        Comparison is case-insensitive on name.
+
+        Args:
+            name: The name of the contact to check.
+            company_id: The company ID to check (can be None).
+
+        Returns:
+            bool: True if a contact with this name and company exists, False otherwise.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                if company_id:
+                    result = await session.execute(
+                        select(exists().where(
+                            (func.lower(ContactDB.name) == func.lower(name)) &
+                            (ContactDB.company_id == company_id)
+                        ))
+                    )
+                else:
+                    result = await session.execute(
+                        select(exists().where(
+                            (func.lower(ContactDB.name) == func.lower(name)) &
+                            (ContactDB.company_id.is_(None))
+                        ))
+                    )
+                return result.scalar() or False
+            except Exception as e:
+                raise e
+
+    async def save_company(self, company: Company) -> Company:
+        """
+        Save a single company to the database.
+
+        Args:
+            company: The company entity to save.
+
+        Returns:
+            Company: The saved company with its generated ID.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                company_db = self._convert_company_to_db(company)
+                session.add(company_db)
+                await session.commit()
+                await session.refresh(company_db)
+                return self._convert_db_to_company(company_db)
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def save_contact(self, contact: Contact) -> Contact:
+        """
+        Save a single contact to the database.
+
+        Args:
+            contact: The contact entity to save.
+
+        Returns:
+            Contact: The saved contact with its generated ID.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                contact_db = self._convert_contact_to_db(contact)
+                session.add(contact_db)
+                await session.commit()
+                await session.refresh(contact_db)
+                return self._convert_db_to_contact(contact_db, None, None)
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def delete_all_data(self) -> None:
+        """
+        Delete all leads data (contacts, jobs, companies) from the database.
+        Deletes in correct order to respect foreign key constraints:
+        1. Contacts (references jobs and companies)
+        2. Jobs (references companies)
+        3. Companies
+
+        Returns:
+            None
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                # Delete in order to respect foreign key constraints
+                await session.execute(delete(ContactDB))
+                await session.execute(delete(JobDB))
+                await session.execute(delete(CompanyDB))
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def job_exists(self, job_title: str, company_name: str) -> bool:
+        """
+        Check if a job with the given title and company name already exists in the database.
+        Comparison is case-insensitive.
+
+        Args:
+            job_title: The title of the job.
+            company_name: The name of the company.
+
+        Returns:
+            bool: True if a job with this title and company exists, False otherwise.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                # First get all company IDs by name (case-insensitive)
+                # Multiple companies with same name may exist
+                company_result = await session.execute(
+                    select(CompanyDB.id).where(
+                        func.lower(CompanyDB.name) == func.lower(company_name)
+                    )
+                )
+                company_ids = company_result.scalars().all()
+
+                if not company_ids:
+                    return False
+
+                # Check if a job with this title exists for any of these companies (case-insensitive)
+                result = await session.execute(
+                    select(exists().where(
+                        (func.lower(JobDB.job_title) == func.lower(job_title)) &
+                        (JobDB.company_id.in_(company_ids))
+                    ))
+                )
+                return result.scalar() or False
+            except Exception as e:
+                raise e
+
+    async def save_job(self, job: Job) -> Job:
+        """
+        Save a single job to the database.
+
+        Args:
+            job: The job entity to save.
+
+        Returns:
+            Job: The saved job with its generated ID.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                job_db = self._convert_job_to_db(job)
+                session.add(job_db)
+                await session.commit()
+                await session.refresh(job_db)
+                return self._convert_db_to_job(job_db, job.company_name)
+            except Exception as e:
+                await session.rollback()
+                raise e
+
+    async def get_or_create_company_stub(self, name: str) -> Company:
+        """
+        Get an existing company by name or create a minimal stub company.
+
+        This is used when saving jobs to ensure the company_id foreign key
+        constraint is satisfied. Creates a stub company with only the name
+        if the company does not exist yet.
+
+        Args:
+            name: The name of the company.
+
+        Returns:
+            Company: The existing or newly created stub company with its ID.
+        """
+        async with AsyncSession(self.engine) as session:
+            # First try to find existing company (case-insensitive)
+            result = await session.execute(
+                select(CompanyDB).where(
+                    func.lower(CompanyDB.name) == func.lower(name)
+                )
+            )
+            company_db = result.scalar_one_or_none()
+
+            if company_db:
+                return self._convert_db_to_company(company_db)
+
+        # Company not found, create a new stub
+        async with AsyncSession(self.engine) as session:
+            try:
+                stub_company = CompanyDB(name=name)
+                session.add(stub_company)
+                await session.commit()
+                await session.refresh(stub_company)
+                return self._convert_db_to_company(stub_company)
+            except Exception as e:
+                await session.rollback()
+                # If creation failed (e.g., due to race condition), try to fetch again
+                async with AsyncSession(self.engine) as retry_session:
+                    result = await retry_session.execute(
+                        select(CompanyDB).where(
+                            func.lower(CompanyDB.name) == func.lower(name)
+                        )
+                    )
+                    company_db = result.scalar_one_or_none()
+                    if company_db:
+                        return self._convert_db_to_company(company_db)
+                raise e

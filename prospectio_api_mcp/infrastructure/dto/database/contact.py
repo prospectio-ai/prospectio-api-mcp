@@ -1,5 +1,5 @@
 from typing import Optional, List
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 import uuid
@@ -42,6 +42,24 @@ class Contact(Base):
     )
     profile_url: Mapped[Optional[str]] = mapped_column(
         String(500), doc="URL to the contact's profile (e.g., LinkedIn)"
+    )
+    short_description: Mapped[Optional[str]] = mapped_column(
+        String(255), doc="Short bio of the contact (~100 chars)"
+    )
+    full_bio: Mapped[Optional[str]] = mapped_column(
+        doc="Full biography of the contact (500-1500 chars)"
+    )
+    confidence_score: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        doc="Validation confidence score (0-100). Scores >= 70 are verified."
+    )
+    validation_status: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        doc="Validation status: 'verified', 'likely_valid', or 'needs_review'"
+    )
+    validation_reasons: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(String),
+        doc="List of reasons explaining the confidence score"
     )
 
     def __repr__(self) -> str:

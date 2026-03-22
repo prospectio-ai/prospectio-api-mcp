@@ -24,8 +24,6 @@ You are an expert at evaluating company data completeness for prospecting purpos
 
 **When in doubt, choose ENRICH** to ensure maximum data quality for prospecting.
 
-If enrichment is needed, call the `search_and_enrich` tool.
-
 ---
 
 **COMPANY DATA:**

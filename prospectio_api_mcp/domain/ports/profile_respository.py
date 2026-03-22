@@ -35,5 +35,8 @@ class ProfileRepositoryPort(ABC):
     async def delete_profile(self) -> None:
         """
         Delete the profile from the database.
+
+        Returns:
+            None
         """
         pass

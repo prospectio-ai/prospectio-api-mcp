@@ -53,17 +53,43 @@ class LLMConfig(BaseSettings):
     OPEN_ROUTER_API_KEY: str = Field(..., json_schema_extra={"env": "OPEN_ROUTER_API_KEY"})
 
 
-class DuckDuckGoConfig(BaseSettings):
-    """Configuration for the DuckDuckGo search client."""
-    DUCKDUCKGO_TIMEOUT: float = Field(10.0, json_schema_extra={"env": "DUCKDUCKGO_TIMEOUT"})
-    DUCKDUCKGO_MAX_RESULTS: int = Field(5, json_schema_extra={"env": "DUCKDUCKGO_MAX_RESULTS"})
-    DUCKDUCKGO_DELAY_BETWEEN_REQUESTS: float = Field(
-        1.0, json_schema_extra={"env": "DUCKDUCKGO_DELAY_BETWEEN_REQUESTS"}
+class WebSearchConfig(BaseSettings):
+    """
+    Configuration for web search via Perplexity sonar model.
+    Perplexity models have native web search capabilities.
+    """
+
+    WEB_SEARCH_MODEL: str = Field(
+        "perplexity/sonar",
+        json_schema_extra={"env": "WEB_SEARCH_MODEL"},
+    )
+    WEB_SEARCH_TIMEOUT: float = Field(
+        60.0,
+        json_schema_extra={"env": "WEB_SEARCH_TIMEOUT"},
+    )
+    WEB_SEARCH_CONCURRENT_REQUESTS: int = Field(
+        5,
+        json_schema_extra={"env": "WEB_SEARCH_CONCURRENT_REQUESTS"},
     )
 
 
-class CrawlConfig(BaseSettings):
-    CRAWL_VERBOSE: bool = Field(False, json_schema_extra={"env": "CRAWL_VERBOSE"})
-    CRAWL_SCAN_FULL_PAGE: bool = Field(
-        False, json_schema_extra={"env": "CRAWL_SCAN_FULL_PAGE"}
+class DuckDuckGoConfig(BaseSettings):
+    """
+    Configuration for DuckDuckGo HTML search.
+
+    Used for LinkedIn profile URL discovery via duckduckgo-search library.
+    Includes rate limiting settings to avoid being blocked.
+    """
+
+    DUCKDUCKGO_TIMEOUT: float = Field(
+        30.0,
+        json_schema_extra={"env": "DUCKDUCKGO_TIMEOUT"},
+    )
+    DUCKDUCKGO_MAX_RESULTS: int = Field(
+        10,
+        json_schema_extra={"env": "DUCKDUCKGO_MAX_RESULTS"},
+    )
+    DUCKDUCKGO_DELAY_BETWEEN_REQUESTS: float = Field(
+        2.0,
+        json_schema_extra={"env": "DUCKDUCKGO_DELAY_BETWEEN_REQUESTS"},
     )

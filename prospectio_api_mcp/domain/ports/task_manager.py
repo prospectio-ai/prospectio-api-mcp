@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any
-
+from typing import Any, List, Optional
 from domain.entities.task import Task, TaskProgress
 
 
@@ -10,16 +9,16 @@ class TaskManagerPort(ABC):
     """
 
     @abstractmethod
-    async def submit_task(self, task_id: str, task_type: str | None = None) -> Task:
+    async def submit_task(self, task_id: str, task_type: Optional[str] = None) -> Task:
         """
-        Submit a new background task.
+        Submit a coroutine as a background task.
 
         Args:
-            task_id: Unique task identifier.
-            task_type: Optional type classification for the task.
+            task_id (str): Unique task identifier.
+            task_type (Optional[str]): Type of task (e.g., 'insert_leads', 'generate_campaign').
 
         Returns:
-            The created Task entity.
+            Task: The created task entity.
         """
         pass
 
@@ -29,21 +28,21 @@ class TaskManagerPort(ABC):
         task_id: str,
         message: str,
         status: str,
-        progress: TaskProgress | None = None,
-        error_details: str | None = None,
+        progress: Optional[TaskProgress] = None,
+        error_details: Optional[str] = None
     ) -> Task:
         """
         Update the status of a background task.
 
         Args:
-            task_id: Unique task identifier.
-            message: Status message.
-            status: New status string.
-            progress: Optional progress information.
-            error_details: Optional error details for failed tasks.
+            task_id (str): Unique task identifier.
+            message (str): Status message.
+            status (str): Task status (e.g., 'pending', 'in_progress', 'completed', 'failed').
+            progress (Optional[TaskProgress]): Progress information for the task.
+            error_details (Optional[str]): Detailed error message if task failed.
 
         Returns:
-            The updated Task entity.
+            Task: The updated task entity.
         """
         pass
 
@@ -53,10 +52,10 @@ class TaskManagerPort(ABC):
         Get the status of a task.
 
         Args:
-            task_id: The task ID.
+            task_id (str): The task ID.
 
         Returns:
-            The task entity with status.
+            Task: The task entity with status.
         """
         pass
 
@@ -66,46 +65,49 @@ class TaskManagerPort(ABC):
         Remove a completed or failed task from the manager.
 
         Args:
-            task_id: The task ID to remove.
+            task_id (str): The task ID to remove.
 
         Returns:
-            True if the task was removed, False if not found.
+            bool: True if task was removed, False if not found.
         """
         pass
 
     @abstractmethod
     async def store_result(self, task_id: str, result: Any) -> None:
         """
-        Store a result for a task.
+        Store the result of a completed task.
 
         Args:
-            task_id: The task ID.
-            result: The result data to store.
+            task_id (str): The task ID.
+            result (Any): The result data to store.
+
+        Returns:
+            None
         """
         pass
 
     @abstractmethod
-    async def get_result(self, task_id: str) -> Any | None:
+    async def get_result(self, task_id: str) -> Optional[Any]:
         """
-        Get the stored result for a task.
+        Get the stored result of a task.
 
         Args:
-            task_id: The task ID.
+            task_id (str): The task ID.
 
         Returns:
-            The stored result, or None if not found.
+            Optional[Any]: The stored result, or None if not found.
         """
         pass
 
     @abstractmethod
-    async def get_running_tasks(self, task_type: str | None = None) -> list[Task]:
+    async def get_running_tasks(self, task_type: Optional[str] = None) -> List[Task]:
         """
-        Get all tasks that are currently running.
+        Get all running tasks (status in pending, processing, in_progress).
 
         Args:
-            task_type: Optional filter by task type.
+            task_type (Optional[str]): If provided, filter tasks by this type.
 
         Returns:
-            List of running tasks.
+            List[Task]: List of running tasks.
         """
         pass

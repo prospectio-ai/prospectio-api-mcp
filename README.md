@@ -16,6 +16,85 @@ This project implements **Clean Architecture** (also known as Hexagonal Architec
 - **Application Layer**: Use cases and API routes
 - **Infrastructure Layer**: External services, APIs, and framework implementations
 
+## Three-Phase Contact Enrichment
+
+The application uses a sophisticated three-phase approach for contact enrichment that separates professional information discovery, LinkedIn profile URL discovery, and biographical information gathering:
+
+### Phase 1: Perplexity Web Search (Contact Information)
+
+Uses Perplexity's sonar model via OpenRouter for finding professional contact information:
+- **Names**: Full names of professionals at target companies
+- **Email addresses**: Professional and work emails
+- **Phone numbers**: Direct contact numbers
+- **Job titles**: Current positions and roles
+- **Professional background**: Career information
+
+The Perplexity search deliberately excludes LinkedIn keywords to avoid low-quality LinkedIn-focused results and instead focuses on finding verified contact details from various professional sources.
+
+### Phase 2: DuckDuckGo HTML Search (LinkedIn URLs)
+
+After contact information is gathered, the `DuckDuckGoClient` performs targeted LinkedIn profile URL discovery:
+
+**Dual Search Strategy:**
+1. **Primary Search (Name + Company)**: Searches for `site:linkedin.com/in "Person Name" "Company Name"`
+2. **Fallback Search (Title + Company)**: If the name search yields no results, falls back to `site:linkedin.com/in "Job Title" "Company Name"`
+
+**Key Features:**
+- Rate limiting to avoid being blocked (configurable delay between requests)
+- URL deduplication and normalization
+- Regex-based extraction of LinkedIn profile URLs from HTML
+- Query sanitization to prevent injection
+
+### Phase 3: Perplexity Web Search (Contact Biography)
+
+After LinkedIn URLs are discovered, a secondary Perplexity search gathers biographical information for each contact:
+- **Short Description**: A concise one-line summary of the contact's professional profile
+- **Full Bio**: A comprehensive biography including career history, achievements, and professional background
+
+This phase enriches the Contact entity with two additional fields:
+- `short_description`: Brief professional summary (displayed in contacts list)
+- `full_bio`: Detailed biographical information (displayed in contact detail view)
+
+### Configuration Options
+
+Add these environment variables to your `.env` file to customize the enrichment behavior:
+
+```bash
+# Perplexity Web Search (Phase 1 & Phase 3)
+WEB_SEARCH_MODEL=perplexity/sonar      # Model for web search
+WEB_SEARCH_TIMEOUT=60.0                 # Request timeout in seconds
+WEB_SEARCH_CONCURRENT_REQUESTS=5        # Max concurrent search requests
+
+# DuckDuckGo LinkedIn Search (Phase 2)
+DUCKDUCKGO_TIMEOUT=30.0                 # Request timeout in seconds
+DUCKDUCKGO_MAX_RESULTS=10               # Max LinkedIn URLs per search
+DUCKDUCKGO_DELAY_BETWEEN_REQUESTS=2.0   # Rate limiting delay in seconds
+```
+
+### Database Migration
+
+If you have an existing database, run the following migration to add the bio columns:
+
+```bash
+psql -d your_database -f /database/migrations/add_contact_bio_columns.sql
+```
+
+Or execute the SQL directly:
+```sql
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS short_description TEXT;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS full_bio TEXT;
+```
+
+### Enrichment Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `WebSearchClient` | `infrastructure/services/enrich_leads_agent/tools/web_search_client.py` | Perplexity-based contact info and bio search |
+| `DuckDuckGoClient` | `infrastructure/services/enrich_leads_agent/tools/duckduckgo_client.py` | LinkedIn URL discovery via HTML search |
+| `DuckDuckGoConfig` | `config.py` | Configuration for DuckDuckGo settings |
+| `WebSearchConfig` | `config.py` | Configuration for Perplexity settings |
+| `EnrichLeadsNodes` | `infrastructure/services/enrich_leads_agent/nodes.py` | Orchestrates the three-phase enrichment |
+
 ## 📁 Project Structure
 ```
 prospectio-api-mcp/
@@ -109,7 +188,7 @@ prospectio-api-mcp/
 ### Domain Layer (`prospectio_api_mcp/domain/`)
 
 #### Entities
-- **`Contact`** (`contact.py`): Represents a business contact (name, email, phone, title)
+- **`Contact`** (`contact.py`): Represents a business contact (name, email, phone, title, linkedin_url, short_description, full_bio)
 - **`Company`** (`company.py`): Represents a company (name, industry, size, location, description)
 - **`Job`** (`job.py`): Represents a job posting (title, description, location, salary, requirements)
 - **`Leads`** (`leads.py`): Aggregates companies, jobs, and contacts for lead data

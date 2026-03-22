@@ -13,7 +13,7 @@ class OverallEnrichLeadsState(TypedDict):
     """Type definition for the Enrich Leads Agent state."""
 
     step: Annotated[list, operator.add]
-    leads: Leads    
+    leads: Leads
     profile: Profile
     company: Annotated[list, operator.add]
     enriched_company: Annotated[list, operator.add]
@@ -21,3 +21,6 @@ class OverallEnrichLeadsState(TypedDict):
     companies_tasks: list[dict]
     enrich_companies_tasks: list[dict]
     contacts_tasks: list[dict]
+    # Streaming mode counters (from enrich_contacts node)
+    contacts_saved: int
+    contacts_skipped: int
