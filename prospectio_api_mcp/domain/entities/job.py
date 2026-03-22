@@ -44,4 +44,3 @@ class JobEntity(BaseModel):
     """
     jobs: List[Job] = Field(..., description="List of jobs")
     pages: Optional[int] = Field(None, description="Total number of pages available")
-    pass

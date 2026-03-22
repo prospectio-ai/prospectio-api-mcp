@@ -7,6 +7,10 @@ from domain.entities.task import TaskProgress
 from domain.ports.leads_repository import LeadsRepositoryPort
 from domain.services.leads.leads_processor import LeadsProcessor
 
+ERR_PROFILE_NOT_FOUND = "Profile not found. Please create a profile before inserting leads."
+ERR_NO_JOBS = "No jobs found in the leads data."
+ERR_NO_COMPANIES = "No companies found in the leads data."
+
 
 class InsertLeadsUseCase:
     """
@@ -75,14 +79,12 @@ class InsertLeadsUseCase:
         if not profile:
             await self.task_manager.update_task(
                 self.task_uuid,
-                "Profile not found. Please create a profile before inserting leads.",
+                ERR_PROFILE_NOT_FOUND,
                 "failed",
                 progress=make_progress(current_step),
-                error_details="Profile not found. Please create a profile before inserting leads."
+                error_details=ERR_PROFILE_NOT_FOUND
             )
-            raise ValueError(
-                "Profile not found. Please create a profile before inserting leads."
-            )
+            raise ValueError(ERR_PROFILE_NOT_FOUND)
 
         # Step 2: Execute strategy to fetch leads
         current_step = 2
@@ -96,21 +98,21 @@ class InsertLeadsUseCase:
         if not leads.jobs:
             await self.task_manager.update_task(
                 self.task_uuid,
-                "No jobs found in the leads data.",
+                ERR_NO_JOBS,
                 "failed",
                 progress=make_progress(current_step),
-                error_details="No jobs found in the leads data."
+                error_details=ERR_NO_JOBS
             )
-            raise ValueError("No jobs found in the leads data.")
+            raise ValueError(ERR_NO_JOBS)
         if not leads.companies:
             await self.task_manager.update_task(
                 self.task_uuid,
-                "No companies found in the leads data.",
+                ERR_NO_COMPANIES,
                 "failed",
                 progress=make_progress(current_step),
-                error_details="No companies found in the leads data."
+                error_details=ERR_NO_COMPANIES
             )
-            raise ValueError("No companies found in the leads data.")
+            raise ValueError(ERR_NO_COMPANIES)
 
         # Step 3: Process and deduplicate leads
         current_step = 3
@@ -120,10 +122,10 @@ class InsertLeadsUseCase:
             "in_progress",
             progress=make_progress(current_step)
         )
-        leads.companies = await self.leads_processor.deduplicate_companies(
+        leads.companies = self.leads_processor.deduplicate_companies(
             leads.companies, leads.jobs
         )
-        leads.jobs = await self.leads_processor.deduplicate_jobs(leads.jobs)
+        leads.jobs = self.leads_processor.deduplicate_jobs(leads.jobs)
         if leads.contacts:
             names = [
                 contact.name
@@ -151,10 +153,10 @@ class InsertLeadsUseCase:
             company.name for company in leads.companies.companies if company.name is not None
         ]
         db_companies = await self.repository.get_companies_by_names(company_names)
-        leads.jobs = await self.leads_processor.change_jobs_company_id(
+        leads.jobs = self.leads_processor.change_jobs_company_id(
             leads.jobs, leads.companies, db_companies
         )
-        leads.companies = await self.leads_processor.new_companies(
+        leads.companies = self.leads_processor.new_companies(
             leads.companies, db_companies
         )
         job_titles = [job.job_title for job in leads.jobs.jobs if job.job_title]
@@ -162,13 +164,13 @@ class InsertLeadsUseCase:
         db_jobs = await self.repository.get_jobs_by_title_and_location(
             job_titles, locations
         )
-        leads.jobs = await self.leads_processor.new_jobs(leads.jobs, db_jobs)
+        leads.jobs = self.leads_processor.new_jobs(leads.jobs, db_jobs)
         if leads.contacts and db_contacts:
-            leads.contacts = await self.leads_processor.new_contacts(
+            leads.contacts = self.leads_processor.new_contacts(
                 leads.contacts, db_contacts
             )
             leads.contacts = (
-                await self.leads_processor.change_contacts_job_and_company_id(
+                self.leads_processor.change_contacts_job_and_company_id(
                     leads.contacts, leads.jobs, leads.companies
                 )
             )
@@ -193,7 +195,7 @@ class InsertLeadsUseCase:
         )
         await self.leads_processor.enrich_leads(self.enrich_leads, leads, profile, self.task_uuid)
         if leads.contacts:
-            leads.contacts = await self.leads_processor.deduplicate_contacts(
+            leads.contacts = self.leads_processor.deduplicate_contacts(
                 leads.contacts
             )
 
@@ -205,7 +207,7 @@ class InsertLeadsUseCase:
             "in_progress",
             progress=make_progress(current_step)
         )
-        leads_result = await self.leads_processor.calculate_statistics(leads)
+        leads_result = self.leads_processor.calculate_statistics(leads)
         await self.repository.save_leads(leads)
 
         # Store result and mark as completed

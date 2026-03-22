@@ -111,7 +111,7 @@ class EnrichLeadsNodes:
             # and the rest is last name (e.g., "Jean Pierre Dupont" -> "Jean", "Pierre Dupont")
             return (parts[0], " ".join(parts[1:]))
 
-    async def first_step(
+    def first_step(
         self, state: OverallEnrichLeadsState
     ) -> OverallEnrichLeadsState:
         """
@@ -125,7 +125,7 @@ class EnrichLeadsNodes:
         self.leads = state["leads"]
         return state
 
-    async def create_enrich_companies_tasks(
+    def create_enrich_companies_tasks(
         self, state: OverallEnrichLeadsState
     ) -> dict:
         """
@@ -146,7 +146,7 @@ class EnrichLeadsNodes:
 
         return {"companies_tasks": companies_tasks}
 
-    async def create_enrich_contacts_tasks(
+    def create_enrich_contacts_tasks(
         self, state: OverallEnrichLeadsState
     ) -> dict:
         """
@@ -550,7 +550,7 @@ class EnrichLeadsNodes:
         state["company"] = []
         return state
 
-    async def create_enrich_company_tasks(self, state: OverallEnrichLeadsState) -> dict:
+    def create_enrich_company_tasks(self, state: OverallEnrichLeadsState) -> dict:
         """
         Prepare enrichment tasks for each company with a positive decision.
 
@@ -621,7 +621,7 @@ class EnrichLeadsNodes:
 
         return state
     
-    async def aggregate(
+    def aggregate(
         self, state: OverallEnrichLeadsState
     ) -> OverallEnrichLeadsState:
         """

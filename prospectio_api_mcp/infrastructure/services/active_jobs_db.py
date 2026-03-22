@@ -1,7 +1,7 @@
 import httpx
 import logging
 from uuid import uuid4
-from typing import Optional, TypeVar
+from typing import Optional
 from prospectio_api_mcp.domain.ports.fetch_leads import FetchLeadsPort
 from prospectio_api_mcp.domain.ports.leads_repository import LeadsRepositoryPort
 from infrastructure.dto.rapidapi.active_jobs_db import ActiveJobsResponseDTO
@@ -12,7 +12,6 @@ from domain.entities.job import Job, JobEntity
 from domain.entities.leads import Leads
 from datetime import datetime
 
-T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +40,7 @@ class ActiveJobsDBAPI(FetchLeadsPort):
         self._jobs_saved = 0
         self._jobs_skipped = 0
 
-    async def _check_error(
+    async def _check_error[T](
         self, client: BaseApiClient, result: httpx.Response, dto_type: type[T]
     ) -> T:
         """
@@ -156,7 +155,7 @@ class ActiveJobsDBAPI(FetchLeadsPort):
             return False, job
 
         if not job.job_title or not company_name:
-            logger.warning(f"Job missing title or company name, skipping save")
+            logger.warning("Job missing title or company name, skipping save")
             return False, job
 
         # Check if job already exists

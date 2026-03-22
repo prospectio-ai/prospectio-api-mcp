@@ -38,4 +38,3 @@ class CompanyEntity(BaseModel):
     """
     companies: List[Company] = Field(..., description="List of companies")
     pages: Optional[int] = Field(None, description="Total number of pages available")
-    pass

@@ -1,7 +1,7 @@
 from uuid import uuid4
 import httpx
 import logging
-from typing import Optional, TypeVar
+from typing import Optional
 from prospectio_api_mcp.domain.ports.fetch_leads import FetchLeadsPort
 from prospectio_api_mcp.domain.ports.leads_repository import LeadsRepositoryPort
 from infrastructure.dto.rapidapi.jsearch import JSearchResponseDTO
@@ -13,8 +13,6 @@ from prospectio_api_mcp.domain.entities.leads import Leads
 from datetime import datetime
 import asyncio
 
-
-T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
@@ -87,7 +85,7 @@ class JsearchAPI(FetchLeadsPort):
         
         return await self._check_error(client, result, JSearchResponseDTO)
 
-    async def _check_error(
+    async def _check_error[T](
         self, client: BaseApiClient, result: httpx.Response, dto_type: type[T]
     ) -> T:
         """
@@ -152,7 +150,7 @@ class JsearchAPI(FetchLeadsPort):
             return False, job
 
         if not job.job_title or not company_name:
-            logger.warning(f"Job missing title or company name, skipping save")
+            logger.warning("Job missing title or company name, skipping save")
             return False, job
 
         # Check if job already exists

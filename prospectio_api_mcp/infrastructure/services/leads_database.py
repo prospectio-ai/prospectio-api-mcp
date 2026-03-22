@@ -87,31 +87,27 @@ class LeadsDatabase(LeadsRepositoryPort):
             JobEntity: Domain entity containing list of jobs.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                total_jobs_result = await session.execute(select(JobDB.id))
-                total_jobs = total_jobs_result.scalars().all()
-                total_pages = ceil(len(total_jobs) / limit) if limit > 0 else 1
+            total_jobs_result = await session.execute(select(JobDB.id))
+            total_jobs = total_jobs_result.scalars().all()
+            total_pages = ceil(len(total_jobs) / limit) if limit > 0 else 1
 
-                result = await session.execute(
-                    select(JobDB)
-                    .order_by(JobDB.compatibility_score.desc())
-                    .offset(offset)
-                    .limit(limit)
-                )
-                job_dbs = result.scalars().all()
+            result = await session.execute(
+                select(JobDB)
+                .order_by(JobDB.compatibility_score.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            job_dbs = result.scalars().all()
 
-                company_ids = {job.company_id for job in job_dbs if job.company_id}
+            company_ids = {job.company_id for job in job_dbs if job.company_id}
 
-                companies_result = await session.execute(
-                    select(CompanyDB.id, CompanyDB.name).where(CompanyDB.id.in_(company_ids))
-                )
-                companies_map = {row.id: row.name for row in companies_result.fetchall()}
+            companies_result = await session.execute(
+                select(CompanyDB.id, CompanyDB.name).where(CompanyDB.id.in_(company_ids))
+            )
+            companies_map = {row.id: row.name for row in companies_result.fetchall()}
 
-
-                jobs = [self._convert_db_to_job(job_db, companies_map.get(job_db.company_id)) for job_db in job_dbs]
-                return JobEntity(jobs=jobs, pages=total_pages)
-            except Exception as e:
-                raise e
+            jobs = [self._convert_db_to_job(job_db, companies_map.get(job_db.company_id)) for job_db in job_dbs]
+            return JobEntity(jobs=jobs, pages=total_pages)
 
     async def get_jobs_by_title_and_location(
         self, title: list[str], location: list[str]
@@ -127,21 +123,17 @@ class LeadsDatabase(LeadsRepositoryPort):
             JobEntity: Domain entity containing the list of jobs matching the criteria. Returns an empty JobEntity if no jobs are found.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                stmt = select(JobDB).where(
-                    or_(*[JobDB.job_title.ilike(f"%{t}%") for t in title]),
-                    or_(*[JobDB.location.ilike(f"%{loc}%") for loc in location]),
-                )
-                result = await session.execute(stmt)
-                job_db = result.scalars().all()
+            stmt = select(JobDB).where(
+                or_(*[JobDB.job_title.ilike(f"%{t}%") for t in title]),
+                or_(*[JobDB.location.ilike(f"%{loc}%") for loc in location]),
+            )
+            result = await session.execute(stmt)
+            job_db = result.scalars().all()
 
-                if job_db:
-                    jobs = [self._convert_db_to_job(job, None) for job in job_db]
-                    return JobEntity(jobs=jobs) # type: ignore
-                return JobEntity(jobs=[]) # type: ignore
-
-            except Exception as e:
-                raise e
+            if job_db:
+                jobs = [self._convert_db_to_job(job, None) for job in job_db]
+                return JobEntity(jobs=jobs) # type: ignore
+            return JobEntity(jobs=[]) # type: ignore
 
     async def get_companies_by_names(self, company_names: List[str]) -> CompanyEntity:
         """
@@ -154,21 +146,17 @@ class LeadsDatabase(LeadsRepositoryPort):
             CompanyEntity: Domain entity containing list of companies matching the names.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                result = await session.execute(
-                    select(CompanyDB).where(CompanyDB.name.in_(company_names))
-                )
-                company_dbs = result.scalars().all()
+            result = await session.execute(
+                select(CompanyDB).where(CompanyDB.name.in_(company_names))
+            )
+            company_dbs = result.scalars().all()
 
-                companies = [
-                    self._convert_db_to_company(company_db)
-                    for company_db in company_dbs
-                ]
+            companies = [
+                self._convert_db_to_company(company_db)
+                for company_db in company_dbs
+            ]
 
-                return CompanyEntity(companies=companies) # type: ignore
-
-            except Exception as e:
-                raise e
+            return CompanyEntity(companies=companies) # type: ignore
 
     async def get_companies(self, offset: int, limit: int) -> CompanyEntity:
         """
@@ -182,22 +170,19 @@ class LeadsDatabase(LeadsRepositoryPort):
             CompanyEntity: Domain entity containing list of companies.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                total_companies_result = await session.execute(select(CompanyDB.id))
-                total_companies = total_companies_result.scalars().all()
-                total_pages = ceil(len(total_companies) / limit) if limit > 0 else 1
+            total_companies_result = await session.execute(select(CompanyDB.id))
+            total_companies = total_companies_result.scalars().all()
+            total_pages = ceil(len(total_companies) / limit) if limit > 0 else 1
 
-                result = await session.execute(
-                    select(CompanyDB).order_by(CompanyDB.id).offset(offset).limit(limit)
-                )
-                company_dbs = result.scalars().all()
-                companies = [
-                    self._convert_db_to_company(company_db)
-                    for company_db in company_dbs
-                ]
-                return CompanyEntity(companies=companies, pages=total_pages) # type: ignore
-            except Exception as e:
-                raise e
+            result = await session.execute(
+                select(CompanyDB).order_by(CompanyDB.id).offset(offset).limit(limit)
+            )
+            company_dbs = result.scalars().all()
+            companies = [
+                self._convert_db_to_company(company_db)
+                for company_db in company_dbs
+            ]
+            return CompanyEntity(companies=companies, pages=total_pages) # type: ignore
 
     async def get_contacts(self, offset: int, limit: int) -> ContactEntity:
         """
@@ -211,41 +196,38 @@ class LeadsDatabase(LeadsRepositoryPort):
             ContactEntity: Domain entity containing list of contacts.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                total_contacts_result = await session.execute(select(ContactDB.id))
-                total_contacts = total_contacts_result.scalars().all()
-                total_pages = ceil(len(total_contacts) / limit) if limit > 0 else 1
+            total_contacts_result = await session.execute(select(ContactDB.id))
+            total_contacts = total_contacts_result.scalars().all()
+            total_pages = ceil(len(total_contacts) / limit) if limit > 0 else 1
 
-                result = await session.execute(
-                    select(ContactDB).order_by(ContactDB.id).offset(offset).limit(limit)
+            result = await session.execute(
+                select(ContactDB).order_by(ContactDB.id).offset(offset).limit(limit)
+            )
+
+            contact_dbs = result.scalars().all()
+
+            company_ids = {contact_db.company_id for contact_db in contact_dbs if contact_db.company_id}
+            job_ids = {contact_db.job_id for contact_db in contact_dbs if contact_db.job_id}
+
+            companies_result = await session.execute(
+                select(CompanyDB.id, CompanyDB.name).where(CompanyDB.id.in_(company_ids))
+            )
+            companies_map = {row.id: row.name for row in companies_result.fetchall()}
+
+            jobs_result = await session.execute(
+                select(JobDB.id, JobDB.job_title).where(JobDB.id.in_(job_ids))
+            )
+            jobs_map = {row.id: row.job_title for row in jobs_result.fetchall()}
+
+            contacts = [
+                self._convert_db_to_contact(
+                    contact_db,
+                    companies_map.get(contact_db.company_id),
+                    jobs_map.get(contact_db.job_id)
                 )
-
-                contact_dbs = result.scalars().all()
-
-                company_ids = {contact_db.company_id for contact_db in contact_dbs if contact_db.company_id}
-                job_ids = {contact_db.job_id for contact_db in contact_dbs if contact_db.job_id}
-
-                companies_result = await session.execute(
-                    select(CompanyDB.id, CompanyDB.name).where(CompanyDB.id.in_(company_ids))
-                )
-                companies_map = {row.id: row.name for row in companies_result.fetchall()}
-
-                jobs_result = await session.execute(
-                    select(JobDB.id, JobDB.job_title).where(JobDB.id.in_(job_ids))
-                )
-                jobs_map = {row.id: row.job_title for row in jobs_result.fetchall()}
-
-                contacts = [
-                    self._convert_db_to_contact(
-                        contact_db,
-                        companies_map.get(contact_db.company_id),
-                        jobs_map.get(contact_db.job_id)
-                    )
-                    for contact_db in contact_dbs
-                ]
-                return ContactEntity(contacts=contacts, pages=total_pages)
-            except Exception as e:
-                raise e
+                for contact_db in contact_dbs
+            ]
+            return ContactEntity(contacts=contacts, pages=total_pages)
 
     async def get_contacts_by_name_and_title(
         self, names: list[str], titles: list[str]
@@ -261,20 +243,17 @@ class LeadsDatabase(LeadsRepositoryPort):
             ContactEntity: Domain entity containing the list of contacts matching both name and title criteria. Returns an empty ContactEntity if no contacts are found.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                stmt = select(ContactDB).where(
-                    or_(*[ContactDB.name.ilike(f"%{name}%") for name in names])
-                    & or_(*[ContactDB.title.ilike(f"%{title}%") for title in titles])
-                )
-                result = await session.execute(stmt)
-                contact_dbs = result.scalars().all()
-                contacts = [
-                    self._convert_db_to_contact(contact_db, None, None)
-                    for contact_db in contact_dbs
-                ]
-                return ContactEntity(contacts=contacts) # type: ignore
-            except Exception as e:
-                raise e
+            stmt = select(ContactDB).where(
+                or_(*[ContactDB.name.ilike(f"%{name}%") for name in names])
+                & or_(*[ContactDB.title.ilike(f"%{title}%") for title in titles])
+            )
+            result = await session.execute(stmt)
+            contact_dbs = result.scalars().all()
+            contacts = [
+                self._convert_db_to_contact(contact_db, None, None)
+                for contact_db in contact_dbs
+            ]
+            return ContactEntity(contacts=contacts) # type: ignore
 
     async def get_contact_by_id(self, contact_id: str) -> Optional[Contact]:
         """
@@ -287,17 +266,14 @@ class LeadsDatabase(LeadsRepositoryPort):
             Optional[Contact]: The contact entity if found, otherwise None.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                result = await session.execute(
-                    select(ContactDB).where(ContactDB.id == contact_id)
-                )
-                contact_db = result.scalars().first()
-                if contact_db:
-                    return self._convert_db_to_contact(contact_db, None, None)
-                return None
-            except Exception as e:
-                raise e
-    
+            result = await session.execute(
+                select(ContactDB).where(ContactDB.id == contact_id)
+            )
+            contact_db = result.scalars().first()
+            if contact_db:
+                return self._convert_db_to_contact(contact_db, None, None)
+            return None
+
     async def get_company_by_id(self, company_id: str) -> Optional[Company]:
         """
         Retrieve a company by its ID from the database.
@@ -308,16 +284,13 @@ class LeadsDatabase(LeadsRepositoryPort):
             Optional[Company]: The company entity if found, otherwise None.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                result = await session.execute(
-                    select(CompanyDB).where(CompanyDB.id == company_id)
-                )
-                company_db = result.scalars().first()
-                if company_db:
-                    return self._convert_db_to_company(company_db)
-                return None
-            except Exception as e:
-                raise e
+            result = await session.execute(
+                select(CompanyDB).where(CompanyDB.id == company_id)
+            )
+            company_db = result.scalars().first()
+            if company_db:
+                return self._convert_db_to_company(company_db)
+            return None
 
     async def get_leads(
         self,
@@ -335,64 +308,60 @@ class LeadsDatabase(LeadsRepositoryPort):
             Leads: Domain entity containing jobs, their companies, and their contacts.
         """
         async with AsyncSession(self.engine) as session:
-            try:
+            total_jobs_result = await session.execute(select(JobDB.id))
+            total_jobs = total_jobs_result.scalars().all()
+            total_pages = ceil(len(total_jobs) / limit) if limit > 0 else 1
 
-                total_jobs_result = await session.execute(select(JobDB.id))
-                total_jobs = total_jobs_result.scalars().all()
-                total_pages = ceil(len(total_jobs) / limit) if limit > 0 else 1
+            jobs_result = await session.execute(
+                select(JobDB)
+                .order_by(JobDB.compatibility_score.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+            job_dbs = jobs_result.scalars().all()
+            jobs = [self._convert_db_to_job(job_db, None) for job_db in job_dbs]
+            job_ids = [job_db.id for job_db in job_dbs]
+            company_ids = list(
+                {
+                    job_db.company_id
+                    for job_db in job_dbs
+                    if job_db.company_id is not None
+                }
+            )
 
-                jobs_result = await session.execute(
-                    select(JobDB)
-                    .order_by(JobDB.compatibility_score.desc())
-                    .offset(offset)
-                    .limit(limit)
+            if company_ids:
+                companies_result = await session.execute(
+                    select(CompanyDB).where(CompanyDB.id.in_(company_ids))
                 )
-                job_dbs = jobs_result.scalars().all()
-                jobs = [self._convert_db_to_job(job_db, None) for job_db in job_dbs]
-                job_ids = [job_db.id for job_db in job_dbs]
-                company_ids = list(
-                    {
-                        job_db.company_id
-                        for job_db in job_dbs
-                        if job_db.company_id is not None
-                    }
-                )
+                company_dbs = companies_result.scalars().all()
+            else:
+                company_dbs = []
+            companies = [
+                self._convert_db_to_company(company_db)
+                for company_db in company_dbs
+            ]
 
-                if company_ids:
-                    companies_result = await session.execute(
-                        select(CompanyDB).where(CompanyDB.id.in_(company_ids))
+            if job_ids or company_ids:
+                contacts_result = await session.execute(
+                    select(ContactDB).where(
+                        (ContactDB.job_id.in_(job_ids))
+                        | (ContactDB.company_id.in_(company_ids))
                     )
-                    company_dbs = companies_result.scalars().all()
-                else:
-                    company_dbs = []
-                companies = [
-                    self._convert_db_to_company(company_db)
-                    for company_db in company_dbs
-                ]
-
-                if job_ids or company_ids:
-                    contacts_result = await session.execute(
-                        select(ContactDB).where(
-                            (ContactDB.job_id.in_(job_ids))
-                            | (ContactDB.company_id.in_(company_ids))
-                        )
-                    )
-                    contact_dbs = contacts_result.scalars().all()
-                else:
-                    contact_dbs = []
-                contacts = [
-                    self._convert_db_to_contact(contact_db, None, None)
-                    for contact_db in contact_dbs
-                ]
-
-                return Leads(
-                    companies=CompanyEntity(companies=companies), # type: ignore
-                    jobs=JobEntity(jobs=jobs), # type: ignore
-                    contacts=ContactEntity(contacts=contacts), # type: ignore
-                    pages=total_pages
                 )
-            except Exception as e:
-                raise e
+                contact_dbs = contacts_result.scalars().all()
+            else:
+                contact_dbs = []
+            contacts = [
+                self._convert_db_to_contact(contact_db, None, None)
+                for contact_db in contact_dbs
+            ]
+
+            return Leads(
+                companies=CompanyEntity(companies=companies), # type: ignore
+                jobs=JobEntity(jobs=jobs), # type: ignore
+                contacts=ContactEntity(contacts=contacts), # type: ignore
+                pages=total_pages
+            )
 
     async def get_all_contacts_with_companies(self) -> list:
         """Retrieve all contacts with their associated companies."""
@@ -688,46 +657,43 @@ class LeadsDatabase(LeadsRepositoryPort):
             List[Tuple[Contact, Company]]: List of tuples containing contact and company pairs.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                # Fetch all contacts
-                contacts_result = await session.execute(select(ContactDB))
-                contact_dbs = contacts_result.scalars().all()
+            # Fetch all contacts
+            contacts_result = await session.execute(select(ContactDB))
+            contact_dbs = contacts_result.scalars().all()
 
-                if not contact_dbs:
-                    return []
+            if not contact_dbs:
+                return []
 
-                # Get all unique company IDs
-                company_ids = list({
-                    contact_db.company_id
-                    for contact_db in contact_dbs
-                    if contact_db.company_id is not None
-                })
+            # Get all unique company IDs
+            company_ids = list({
+                contact_db.company_id
+                for contact_db in contact_dbs
+                if contact_db.company_id is not None
+            })
 
-                # Fetch all companies in one query
-                companies_map: dict[str, CompanyDB] = {}
-                if company_ids:
-                    companies_result = await session.execute(
-                        select(CompanyDB).where(CompanyDB.id.in_(company_ids))
+            # Fetch all companies in one query
+            companies_map: dict[str, CompanyDB] = {}
+            if company_ids:
+                companies_result = await session.execute(
+                    select(CompanyDB).where(CompanyDB.id.in_(company_ids))
+                )
+                company_dbs = companies_result.scalars().all()
+                companies_map = {company_db.id: company_db for company_db in company_dbs}
+
+            # Build result list of tuples
+            result: List[Tuple[Contact, Company]] = []
+            for contact_db in contact_dbs:
+                company_db = companies_map.get(contact_db.company_id) if contact_db.company_id else None
+                if company_db:
+                    contact = self._convert_db_to_contact(
+                        contact_db,
+                        company_db.name,
+                        None
                     )
-                    company_dbs = companies_result.scalars().all()
-                    companies_map = {company_db.id: company_db for company_db in company_dbs}
+                    company = self._convert_db_to_company(company_db)
+                    result.append((contact, company))
 
-                # Build result list of tuples
-                result: List[Tuple[Contact, Company]] = []
-                for contact_db in contact_dbs:
-                    company_db = companies_map.get(contact_db.company_id) if contact_db.company_id else None
-                    if company_db:
-                        contact = self._convert_db_to_contact(
-                            contact_db,
-                            company_db.name,
-                            None
-                        )
-                        company = self._convert_db_to_company(company_db)
-                        result.append((contact, company))
-
-                return result
-            except Exception as e:
-                raise e
+            return result
 
     async def company_exists_by_name(self, name: str) -> bool:
         """
@@ -740,13 +706,10 @@ class LeadsDatabase(LeadsRepositoryPort):
             bool: True if a company with this name exists, False otherwise.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                result = await session.execute(
-                    select(exists().where(CompanyDB.name == name))
-                )
-                return result.scalar() or False
-            except Exception as e:
-                raise e
+            result = await session.execute(
+                select(exists().where(CompanyDB.name == name))
+            )
+            return result.scalar() or False
 
     async def get_company_by_name(self, name: str) -> Optional[Company]:
         """
@@ -783,17 +746,14 @@ class LeadsDatabase(LeadsRepositoryPort):
             return False
 
         async with AsyncSession(self.engine) as session:
-            try:
-                # Use PostgreSQL's && (overlap) operator for array comparison
-                # Cast the input list to ARRAY(Text) to match the column type (text[])
-                result = await session.execute(
-                    select(exists().where(
-                        ContactDB.email.overlap(cast(emails, ARRAY(Text)))
-                    ))
-                )
-                return result.scalar() or False
-            except Exception as e:
-                raise e
+            # Use PostgreSQL's && (overlap) operator for array comparison
+            # Cast the input list to ARRAY(Text) to match the column type (text[])
+            result = await session.execute(
+                select(exists().where(
+                    ContactDB.email.overlap(cast(emails, ARRAY(Text)))
+                ))
+            )
+            return result.scalar() or False
 
     async def contact_exists_by_name_and_company(
         self, name: str, company_id: Optional[str]
@@ -812,24 +772,21 @@ class LeadsDatabase(LeadsRepositoryPort):
             bool: True if a contact with this name and company exists, False otherwise.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                if company_id:
-                    result = await session.execute(
-                        select(exists().where(
-                            (func.lower(ContactDB.name) == func.lower(name)) &
-                            (ContactDB.company_id == company_id)
-                        ))
-                    )
-                else:
-                    result = await session.execute(
-                        select(exists().where(
-                            (func.lower(ContactDB.name) == func.lower(name)) &
-                            (ContactDB.company_id.is_(None))
-                        ))
-                    )
-                return result.scalar() or False
-            except Exception as e:
-                raise e
+            if company_id:
+                result = await session.execute(
+                    select(exists().where(
+                        (func.lower(ContactDB.name) == func.lower(name)) &
+                        (ContactDB.company_id == company_id)
+                    ))
+                )
+            else:
+                result = await session.execute(
+                    select(exists().where(
+                        (func.lower(ContactDB.name) == func.lower(name)) &
+                        (ContactDB.company_id.is_(None))
+                    ))
+                )
+            return result.scalar() or False
 
     async def save_company(self, company: Company) -> Company:
         """
@@ -908,29 +865,26 @@ class LeadsDatabase(LeadsRepositoryPort):
             bool: True if a job with this title and company exists, False otherwise.
         """
         async with AsyncSession(self.engine) as session:
-            try:
-                # First get all company IDs by name (case-insensitive)
-                # Multiple companies with same name may exist
-                company_result = await session.execute(
-                    select(CompanyDB.id).where(
-                        func.lower(CompanyDB.name) == func.lower(company_name)
-                    )
+            # First get all company IDs by name (case-insensitive)
+            # Multiple companies with same name may exist
+            company_result = await session.execute(
+                select(CompanyDB.id).where(
+                    func.lower(CompanyDB.name) == func.lower(company_name)
                 )
-                company_ids = company_result.scalars().all()
+            )
+            company_ids = company_result.scalars().all()
 
-                if not company_ids:
-                    return False
+            if not company_ids:
+                return False
 
-                # Check if a job with this title exists for any of these companies (case-insensitive)
-                result = await session.execute(
-                    select(exists().where(
-                        (func.lower(JobDB.job_title) == func.lower(job_title)) &
-                        (JobDB.company_id.in_(company_ids))
-                    ))
-                )
-                return result.scalar() or False
-            except Exception as e:
-                raise e
+            # Check if a job with this title exists for any of these companies (case-insensitive)
+            result = await session.execute(
+                select(exists().where(
+                    (func.lower(JobDB.job_title) == func.lower(job_title)) &
+                    (JobDB.company_id.in_(company_ids))
+                ))
+            )
+            return result.scalar() or False
 
     async def save_job(self, job: Job) -> Job:
         """

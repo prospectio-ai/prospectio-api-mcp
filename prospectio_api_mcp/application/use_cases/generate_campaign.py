@@ -7,6 +7,8 @@ from domain.ports.profile_respository import ProfileRepositoryPort
 from domain.ports.campaign_repository import CampaignRepositoryPort
 from domain.ports.task_manager import TaskManagerPort
 
+ERR_PROFILE_NOT_FOUND = "Profile not found. Please create a profile before generating campaign."
+
 
 class GenerateCampaignUseCase:
     """
@@ -60,14 +62,12 @@ class GenerateCampaignUseCase:
         if not profile:
             await self.task_manager.update_task(
                 self.task_uuid,
-                "Profile not found. Please create a profile before generating campaign.",
+                ERR_PROFILE_NOT_FOUND,
                 "failed",
                 progress=TaskProgress(current=0, total=1, percentage=0.0),
-                error_details="Profile not found. Please create a profile before generating campaign."
+                error_details=ERR_PROFILE_NOT_FOUND
             )
-            raise ValueError(
-                "Profile not found. Please create a profile before generating campaign."
-            )
+            raise ValueError(ERR_PROFILE_NOT_FOUND)
 
         # Create campaign record at start
         campaign = Campaign(
