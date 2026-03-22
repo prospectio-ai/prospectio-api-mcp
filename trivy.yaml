@@ -1,0 +1,11 @@
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+
+pkg:
+  types:
+    - os
+    - library
+
+ignorefile: .trivyignore

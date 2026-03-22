@@ -6,7 +6,6 @@ from application.api.profile_routes import profile_router
 from domain.ports import task_manager
 from infrastructure.services.compatibility_score import CompatibilityScoreLLM
 from infrastructure.services.enrich_leads_agent.agent import EnrichLeadsAgent
-from infrastructure.services.enrich_leads_agent.tools.crawl_client import CrawlClient
 from infrastructure.services.generate_message import GenerateMessageLLM
 from infrastructure.services.profile_database import ProfileDatabase
 from application.api.mcp_routes import mcp_prospectio
@@ -53,7 +52,6 @@ profile_routes = profile_router(ProfileDatabase(DatabaseConfig().DATABASE_URL)) 
 async def lifespan(app: FastAPI):
     """Manage the lifespan of both HTTP and stdio MCP servers."""
     async with contextlib.AsyncExitStack() as stack:
-        await CrawlClient().crawl_page("https://www.google.fr")
         if AppConfig().EXPOSE == "streamable": # type: ignore
             await stack.enter_async_context(mcp_prospectio.session_manager.run())
         yield

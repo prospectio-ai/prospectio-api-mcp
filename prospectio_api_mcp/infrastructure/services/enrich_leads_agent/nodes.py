@@ -18,7 +18,6 @@ from infrastructure.services.enrich_leads_agent.models.make_decision import (
     MakeDecisionResult,
 )
 from infrastructure.services.enrich_leads_agent.state import OverallEnrichLeadsState
-from infrastructure.services.enrich_leads_agent.tools.crawl_client import CrawlClient
 from infrastructure.services.enrich_leads_agent.tools.duck_duck_go_client import (
     DuckDuckGoClient,
 )
@@ -231,8 +230,7 @@ class EnrichLeadsNodes:
 
         for result in search_results:
             if urllib.parse.urlparse(result.url).path not in ("", "/"):
-                page_data = await CrawlClient().crawl_page(result.url)
-                pages.append(page_data)
+                pages.append(result.url)
 
         company_description: (
             str
