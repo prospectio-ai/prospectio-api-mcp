@@ -19,7 +19,6 @@ from infrastructure.services.enrich_leads_agent.models.company_info import Compa
 from infrastructure.services.enrich_leads_agent.models.contact_info import ContactInfo
 from infrastructure.services.enrich_leads_agent.models.make_decision import MakeDecisionResult
 from infrastructure.services.enrich_leads_agent.models.search_results_model import SearchResultModel
-from infrastructure.services.enrich_leads_agent.tools.crawl_client import CrawlClient
 from infrastructure.services.enrich_leads_agent.tools.duck_duck_go_client import DuckDuckGoClient
 from infrastructure.services.jsearch import JsearchAPI
 from config import DatabaseConfig, JsearchConfig
@@ -447,7 +446,6 @@ class TestJsearchUseCase:
             patch.object(EnrichChain, 'extract_other_info_from_description', new_callable=AsyncMock) as mock_company_info, \
             patch.object(EnrichChain, 'extract_contact_from_web_search', new_callable=AsyncMock) as mock_contact_info, \
             patch.object(EnrichChain, 'extract_interesting_job_titles_from_profile', new_callable=AsyncMock) as mock_job_titles, \
-            patch.object(CrawlClient, 'crawl_page', new_callable=AsyncMock) as mock_crawl, \
             patch.object(DuckDuckGoClient, 'search', new_callable=AsyncMock) as mock_search, \
             patch.object(use_case, 'profile_repository', autospec=True) as mock_profile_repo, \
             patch.object(use_case, 'repository', autospec=True) as mock_repo:
@@ -520,7 +518,6 @@ class TestJsearchUseCase:
             patch.object(EnrichChain, 'extract_other_info_from_description', new_callable=AsyncMock) as mock_company_info, \
             patch.object(EnrichChain, 'extract_contact_from_web_search', new_callable=AsyncMock) as mock_contact_info, \
             patch.object(EnrichChain, 'extract_interesting_job_titles_from_profile', new_callable=AsyncMock) as mock_job_titles, \
-            patch.object(CrawlClient, 'crawl_page', new_callable=AsyncMock) as mock_crawl, \
             patch.object(DuckDuckGoClient, 'search', new_callable=AsyncMock) as mock_search, \
             patch.object(use_case, 'repository', autospec=True) as mock_repo, \
             patch.object(use_case, 'profile_repository', autospec=True) as mock_profile_repo:
