@@ -53,6 +53,15 @@ class LLMConfig(BaseSettings):
     OPEN_ROUTER_API_KEY: str = Field(..., json_schema_extra={"env": "OPEN_ROUTER_API_KEY"})
 
 
+class DuckDuckGoConfig(BaseSettings):
+    """Configuration for the DuckDuckGo search client."""
+    DUCKDUCKGO_TIMEOUT: float = Field(10.0, json_schema_extra={"env": "DUCKDUCKGO_TIMEOUT"})
+    DUCKDUCKGO_MAX_RESULTS: int = Field(5, json_schema_extra={"env": "DUCKDUCKGO_MAX_RESULTS"})
+    DUCKDUCKGO_DELAY_BETWEEN_REQUESTS: float = Field(
+        1.0, json_schema_extra={"env": "DUCKDUCKGO_DELAY_BETWEEN_REQUESTS"}
+    )
+
+
 class CrawlConfig(BaseSettings):
     CRAWL_VERBOSE: bool = Field(False, json_schema_extra={"env": "CRAWL_VERBOSE"})
     CRAWL_SCAN_FULL_PAGE: bool = Field(
