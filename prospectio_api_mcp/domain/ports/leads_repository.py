@@ -134,3 +134,136 @@ class LeadsRepositoryPort(ABC):
             Leads: Domain entity containing all companies, jobs, and contacts.
         """
         pass
+
+    @abstractmethod
+    async def get_all_contacts_with_companies(self) -> list:
+        """
+        Retrieve all contacts with their associated companies.
+
+        Returns:
+            list: List of contacts with company information.
+        """
+        pass
+
+    @abstractmethod
+    async def delete_all_data(self) -> None:
+        """
+        Delete all leads data (companies, jobs, and contacts) from the database.
+        """
+        pass
+
+    @abstractmethod
+    async def company_exists_by_name(self, name: str) -> bool:
+        """
+        Check if a company exists by name.
+
+        Args:
+            name: The company name to check.
+
+        Returns:
+            True if the company exists.
+        """
+        pass
+
+    @abstractmethod
+    async def get_company_by_name(self, name: str) -> Optional[Company]:
+        """
+        Retrieve a company by its name.
+
+        Args:
+            name: The company name.
+
+        Returns:
+            The company if found, else None.
+        """
+        pass
+
+    @abstractmethod
+    async def contact_exists_by_email(self, emails: list[str]) -> bool:
+        """
+        Check if a contact exists by email.
+
+        Args:
+            emails: List of email addresses to check.
+
+        Returns:
+            True if a contact with any of the emails exists.
+        """
+        pass
+
+    @abstractmethod
+    async def contact_exists_by_name_and_company(self, name: str, company_id) -> bool:
+        """
+        Check if a contact exists by name and company.
+
+        Args:
+            name: The contact name.
+            company_id: The company ID.
+
+        Returns:
+            True if the contact exists.
+        """
+        pass
+
+    @abstractmethod
+    async def save_company(self, company: Company) -> Company:
+        """
+        Save a company to the database.
+
+        Args:
+            company: The company entity to save.
+
+        Returns:
+            The saved company entity.
+        """
+        pass
+
+    @abstractmethod
+    async def save_contact(self, contact: Contact) -> Contact:
+        """
+        Save a contact to the database.
+
+        Args:
+            contact: The contact entity to save.
+
+        Returns:
+            The saved contact entity.
+        """
+        pass
+
+    @abstractmethod
+    async def job_exists(self, job_title: str, company_name: str) -> bool:
+        """
+        Check if a job exists by title and company name.
+
+        Args:
+            job_title: The job title.
+            company_name: The company name.
+
+        Returns:
+            True if the job exists.
+        """
+        pass
+
+    @abstractmethod
+    async def save_job(self, job) -> None:
+        """
+        Save a job to the database.
+
+        Args:
+            job: The job entity to save.
+        """
+        pass
+
+    @abstractmethod
+    async def get_or_create_company_stub(self, name: str) -> Company:
+        """
+        Get an existing company or create a stub company by name.
+
+        Args:
+            name: The company name.
+
+        Returns:
+            The existing or newly created company.
+        """
+        pass

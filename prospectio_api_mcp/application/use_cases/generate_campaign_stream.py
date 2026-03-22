@@ -89,6 +89,7 @@ class GenerateCampaignStreamUseCase:
                 subject=saved_message.subject,
                 message=saved_message.message,
                 status=saved_message.status,
+                error=saved_message.error,
                 created_at=saved_message.created_at or _utc_now(),
             ).model_dump(),
         ).to_sse_format()
