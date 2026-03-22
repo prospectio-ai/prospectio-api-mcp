@@ -1,4 +1,7 @@
+import asyncio
 import contextlib
+import logging
+from pathlib import Path
 from typing import Callable
 from fastapi import FastAPI, BackgroundTasks
 from application.api.leads_routes import leads_router
@@ -21,6 +24,18 @@ from config import DatabaseConfig
 from config import AppConfig
 from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.services.task_manager import InMemoryTaskManager
+from alembic.config import Config
+from alembic import command
+
+logger = logging.getLogger(__name__)
+
+
+def _run_alembic_upgrade():
+    """Run alembic upgrade head synchronously."""
+    alembic_dir = Path(__file__).parent
+    alembic_cfg = Config(str(alembic_dir / "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", str(alembic_dir / "alembic"))
+    command.upgrade(alembic_cfg, "head")
 
 
 def _create_leads_strategies(leads_database) -> dict[str, Callable]:
@@ -66,6 +81,10 @@ profile_routes = profile_router(
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage the lifespan of both HTTP and stdio MCP servers."""
+    logger.info("Running database migrations...")
+    await asyncio.to_thread(_run_alembic_upgrade)
+    logging.getLogger().setLevel(logging.INFO)  # restore after alembic fileConfig
+    logger.info("Database migrations completed successfully")
     async with contextlib.AsyncExitStack() as stack:
         if AppConfig().EXPOSE == "streamable": # type: ignore
             await stack.enter_async_context(mcp_prospectio.session_manager.run())
