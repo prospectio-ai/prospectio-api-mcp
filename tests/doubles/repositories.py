@@ -20,6 +20,7 @@ class FakeCampaignRepository(CampaignRepositoryPort):
         self._campaigns: dict[str, Campaign] = {}
         self._messages: dict[str, CampaignMessage] = {}
         self._contacts_with_companies: List[Tuple[Contact, Company]] = []
+        self._failed_messages_with_contacts: dict[str, List[Tuple[CampaignMessage, Contact, Company]]] = {}
 
     async def create_campaign(self, campaign: Campaign) -> Campaign:
         """Create a new campaign with auto-generated ID."""
@@ -69,6 +70,16 @@ class FakeCampaignRepository(CampaignRepositoryPort):
         """Check if a contact already has a message generated."""
         return any(m.contact_id == contact_id for m in self._messages.values())
 
+    async def get_failed_messages_with_contacts(
+        self, campaign_id: str
+    ) -> List[Tuple[CampaignMessage, Contact, Company]]:
+        """Return failed messages with their associated contact and company."""
+        return self._failed_messages_with_contacts.get(campaign_id, [])
+
+    async def delete_message(self, message_id: str) -> None:
+        """Delete a message record by ID."""
+        self._messages.pop(message_id, None)
+
     # Helper methods for test setup (not in interface)
     def add_contacts_with_companies(
         self, contacts_with_companies: List[Tuple[Contact, Company]]
@@ -84,11 +95,20 @@ class FakeCampaignRepository(CampaignRepositoryPort):
         """Return all campaigns."""
         return list(self._campaigns.values())
 
+    def add_failed_messages_with_contacts(
+        self,
+        campaign_id: str,
+        failed_messages: List[Tuple[CampaignMessage, Contact, Company]],
+    ) -> None:
+        """Configure failed messages that will be returned by get_failed_messages_with_contacts."""
+        self._failed_messages_with_contacts[campaign_id] = failed_messages
+
     def clear(self) -> None:
         """Reset the fake repository."""
         self._campaigns.clear()
         self._messages.clear()
         self._contacts_with_companies.clear()
+        self._failed_messages_with_contacts.clear()
 
 
 class FakeProfileRepository(ProfileRepositoryPort):
