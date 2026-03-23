@@ -38,20 +38,20 @@ class Campaign(Base):
         doc="Current status of the campaign (draft, in_progress, completed, failed)"
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
         default=datetime.utcnow,
         doc="Timestamp when campaign was created"
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         doc="Timestamp when campaign was last updated"
     )
     completed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
         doc="Timestamp when campaign was completed"
     )

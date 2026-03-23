@@ -75,7 +75,7 @@ class Message(Base):
         doc="Error message if generation failed"
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
         default=datetime.utcnow,
         doc="Timestamp when message was created"
