@@ -9,6 +9,7 @@ from application.requests.campaign import CreateCampaignRequest
 from application.use_cases.generate_message import GenerateMessageUseCase
 from application.use_cases.generate_campaign import GenerateCampaignUseCase
 from application.use_cases.generate_campaign_stream import GenerateCampaignStreamUseCase
+from application.use_cases.retry_campaign_stream import RetryCampaignStreamUseCase
 from application.use_cases.get_leads import GetLeadsUseCase
 from domain.entities.company import CompanyEntity
 from domain.entities.contact import ContactEntity
@@ -341,6 +342,50 @@ def leads_router(
             )
         except Exception as e:
             logger.error(f"Error in generate campaign stream: {e}\n{traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @leads_router.post("/campaigns/{campaign_id}/retry/stream")
+    async def retry_campaign_stream(
+        campaign_id: str = Path(..., description="The campaign ID to retry failed messages for"),
+    ) -> StreamingResponse:
+        """
+        Retry failed campaign messages with SSE streaming.
+
+        Re-generates only the failed messages of an existing campaign.
+        Failed message records are deleted before re-generation.
+
+        Event types:
+        - campaign_started: Retry started with campaign_id
+        - progress_update: X/Y failed messages retried
+        - message_generated: Each re-generated message
+        - campaign_completed: Final summary with updated counters
+        - campaign_failed: Error occurred
+
+        Args:
+            campaign_id (str): The campaign ID to retry.
+
+        Returns:
+            StreamingResponse: SSE stream of retry events.
+        """
+        try:
+            use_case = RetryCampaignStreamUseCase(
+                campaign_id=campaign_id,
+                profile_repository=profile_repository,
+                campaign_repository=campaign_repository,
+                message_port=message_port,
+            )
+
+            return StreamingResponse(
+                use_case.retry_campaign_stream(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error in retry campaign stream: {e}\n{traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=str(e))
 
     @leads_router.get("/campaign/result/{task_id}")

@@ -118,3 +118,29 @@ class CampaignRepositoryPort(ABC):
             bool: True if contact has a message, False otherwise.
         """
         pass
+
+    @abstractmethod
+    async def get_failed_messages_with_contacts(
+        self, campaign_id: str
+    ) -> List[Tuple[CampaignMessage, Contact, Company]]:
+        """
+        Return failed messages with their associated contact and company.
+
+        Args:
+            campaign_id (str): The campaign ID to get failed messages for.
+
+        Returns:
+            List[Tuple[CampaignMessage, Contact, Company]]: List of failed message,
+                contact, and company triples.
+        """
+        pass
+
+    @abstractmethod
+    async def delete_message(self, message_id: str) -> None:
+        """
+        Delete a message record by ID.
+
+        Args:
+            message_id (str): The unique identifier of the message to delete.
+        """
+        pass

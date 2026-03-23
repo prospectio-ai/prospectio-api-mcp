@@ -144,6 +144,34 @@ class FakeCampaignRepository(CampaignRepositoryPort):
         """Check if a contact already has a message generated."""
         return contact_id in self._contact_messages
 
+    async def get_failed_messages_with_contacts(
+        self, campaign_id: str
+    ) -> List[Tuple[CampaignMessage, Contact, Company]]:
+        """Return failed messages with their associated contact and company."""
+        result: List[Tuple[CampaignMessage, Contact, Company]] = []
+        for msg in self._messages.values():
+            if msg.campaign_id == campaign_id and msg.status == "failed":
+                contact = self._contacts.get(msg.contact_id)
+                if contact and contact.company_id:
+                    company = self._companies.get(contact.company_id)
+                    if company:
+                        result.append((msg, contact, company))
+        return result
+
+    async def delete_message(self, message_id: str) -> None:
+        """Delete a message record by ID."""
+        if message_id in self._messages:
+            msg = self._messages[message_id]
+            # Clean up contact_messages tracking
+            if msg.contact_id in self._contact_messages:
+                self._contact_messages[msg.contact_id] = [
+                    mid for mid in self._contact_messages[msg.contact_id]
+                    if mid != message_id
+                ]
+                if not self._contact_messages[msg.contact_id]:
+                    del self._contact_messages[msg.contact_id]
+            del self._messages[message_id]
+
     # Helper methods for test setup (not in interface)
     def add_contact(self, contact: Contact) -> None:
         """Add a contact to the fake store."""

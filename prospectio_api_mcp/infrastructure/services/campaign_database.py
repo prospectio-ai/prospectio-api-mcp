@@ -3,7 +3,7 @@ import datetime
 from math import ceil
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy import select, exists, or_
+from sqlalchemy import select, exists, or_, delete
 from domain.ports.campaign_repository import CampaignRepositoryPort
 from domain.entities.campaign import Campaign, CampaignEntity, CampaignStatus
 from domain.entities.campaign_result import CampaignMessage
@@ -276,6 +276,57 @@ class CampaignDatabase(CampaignRepositoryPort):
                     result.append((contact, company))
 
             return result
+
+    async def get_failed_messages_with_contacts(
+        self, campaign_id: str
+    ) -> List[Tuple[CampaignMessage, Contact, Company]]:
+        """
+        Return failed messages with their associated contact and company.
+
+        Args:
+            campaign_id (str): The campaign ID to get failed messages for.
+
+        Returns:
+            List[Tuple[CampaignMessage, Contact, Company]]: List of failed message,
+                contact, and company triples.
+        """
+        async with AsyncSession(self.engine) as session:
+            result = await session.execute(
+                select(MessageDB, ContactDB, CompanyDB)
+                .join(ContactDB, MessageDB.contact_id == ContactDB.id)
+                .join(CompanyDB, ContactDB.company_id == CompanyDB.id)
+                .where(
+                    MessageDB.campaign_id == campaign_id,
+                    MessageDB.status == "failed",
+                )
+            )
+            rows = result.all()
+
+            return [
+                (
+                    self._convert_db_to_message(message_db),
+                    self._convert_db_to_contact(contact_db, company_db.name, None),
+                    self._convert_db_to_company(company_db),
+                )
+                for message_db, contact_db, company_db in rows
+            ]
+
+    async def delete_message(self, message_id: str) -> None:
+        """
+        Delete a message record by ID.
+
+        Args:
+            message_id (str): The unique identifier of the message to delete.
+        """
+        async with AsyncSession(self.engine) as session:
+            try:
+                await session.execute(
+                    delete(MessageDB).where(MessageDB.id == message_id)
+                )
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
 
     async def contact_has_message(self, contact_id: str) -> bool:
         """
